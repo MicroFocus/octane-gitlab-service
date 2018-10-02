@@ -1,6 +1,6 @@
 version: 1.0.{build}
 build_script:
-  - cmd: mvn clean install
+  - cmd: mvn clean install -Dmaven.test.skip=true
 test: off
 artifacts:
   - path: target/*.jar
