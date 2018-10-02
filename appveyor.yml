@@ -1,0 +1,9 @@
+version: 1.0.{build}
+build_script:
+  - cmd: mvn clean install
+artifacts:
+  - path: target/*.jar
+    name: Executable JAR
+
+  - path: src/main/resources/application.properties
+    name: Configuration file
