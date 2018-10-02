@@ -1,6 +1,7 @@
 version: 1.0.{build}
 build_script:
   - cmd: mvn clean install
+test: off
 artifacts:
   - path: target/*.jar
     name: Executable JAR
