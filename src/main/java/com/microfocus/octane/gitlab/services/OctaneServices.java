@@ -36,6 +36,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.file.FileSystems;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -197,7 +200,7 @@ public class OctaneServices extends CIPluginServicesBase {
         List<TestRun> result = new ArrayList<>();
         try {
             if (job.getArtifactsFile() != null) {
-                List<ByteArrayInputStream> artifacts = inputStream2String(gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+                List<ByteArrayInputStream> artifacts = extractArtifacts(gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
                 JAXBContext jaxbContext = JAXBContext.newInstance(Testsuites.class);
                 for (ByteArrayInputStream artifact : artifacts) {
                     Object ots = jaxbContext.createUnmarshaller().unmarshal(artifact);
@@ -214,14 +217,16 @@ public class OctaneServices extends CIPluginServicesBase {
         return result;
     }
 
-    private List<ByteArrayInputStream> inputStream2String(InputStream inputStream) {
+    private List<ByteArrayInputStream> extractArtifacts(InputStream inputStream) {
+        PathMatcher matcher = FileSystems.getDefault()
+                .getPathMatcher("glob:" + applicationSettings.getConfig().getGitlabArtifactPattern());
         try {
             ZipInputStream zis = new ZipInputStream(inputStream);
             List<ByteArrayInputStream> result = new LinkedList<>();
             for (ZipEntry entry = zis.getNextEntry(); entry != null; entry = zis.getNextEntry()) {
                 System.out.println("entry: " + entry.getName() + ", " + entry.getSize());
                 // consume all the data from this entry
-                if (entry.getName().endsWith(".xml")) {
+                if (matcher.matches(Paths.get(entry.getName()))) {
                     while (zis.available() > 0) {
                         ByteArrayOutputStream entryStream = new ByteArrayOutputStream();
                         byte[] buffer = new byte[1024];

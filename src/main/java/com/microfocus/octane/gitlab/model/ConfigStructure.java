@@ -36,6 +36,9 @@ public class ConfigStructure {
     @Value("${gitlab.privateToken:#{null}}")
     private String gitlabPrivateToken;
 
+    @Value("${gitlab.artifactPattern:**.xml}")
+    private String gitlabArtifactPattern;
+
     @Value("${server.baseUrl:#{null}}")
     private String serverBaseUrl;
 
@@ -126,6 +129,10 @@ public class ConfigStructure {
 
     public String getGitlabPrivateToken() {
         return gitlabPrivateToken;
+    }
+
+    public String getGitlabArtifactPattern() {
+        return gitlabArtifactPattern;
     }
 
     public String getProxyField(String protocol, String fieldName) {
