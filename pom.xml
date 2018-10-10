@@ -5,7 +5,7 @@
 
     <groupId>com.microfocus.octane</groupId>
     <artifactId>octane-gitlab-service</artifactId>
-    <version>0.1.0</version>
+    <version>${APPVEYOR_BUILD_VERSION}</version>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
