@@ -48,13 +48,21 @@ public class GitlabServices {
             for (Project project : projects) {
                 for (ProjectHook hook : gitLabApi.getProjectApi().getHooks(project.getId())) {
                     if (hook.getUrl().equals(webhookListenerUrl.toString())) {
-                        gitLabApi.getProjectApi().deleteHook(project.getId(), hook.getId());
+                        try {
+                            gitLabApi.getProjectApi().deleteHook(project.getId(), hook.getId());
+                        } catch (GitLabApiException e) {
+                            log.catching(e);
+                        }
                     }
                 }
                 ProjectHook hook = new ProjectHook();
                 hook.setJobEvents(true);
                 hook.setPipelineEvents(true);
-                gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
+                try {
+                    gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
+                } catch (GitLabApiException e) {
+                    log.catching(e);
+                }
             }
         } catch (GitLabApiException e) {
             log.catching(e);
