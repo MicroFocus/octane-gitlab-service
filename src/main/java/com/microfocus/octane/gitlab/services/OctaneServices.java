@@ -7,10 +7,7 @@ import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.general.CIPluginInfo;
 import com.hp.octane.integrations.dto.general.CIServerInfo;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
-import com.hp.octane.integrations.dto.tests.BuildContext;
-import com.hp.octane.integrations.dto.tests.TestRun;
-import com.hp.octane.integrations.dto.tests.TestRunResult;
-import com.hp.octane.integrations.dto.tests.TestsResult;
+import com.hp.octane.integrations.dto.tests.*;
 import com.hp.octane.integrations.spi.CIPluginServicesBase;
 import com.hp.octane.integrations.util.CIPluginSDKUtils;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
@@ -263,6 +260,20 @@ public class OctaneServices extends CIPluginServicesBase {
                 .setTestName(tc.getName())
                 .setResult(testResultStatus)
                 .setDuration(Double.valueOf(tc.getTime()).longValue() * 1000);
+        if(tc.getError() != null && tc.getError().size() > 0) {
+            TestRunError error = dtoFactory.newDTO(TestRunError.class);
+            error.setErrorMessage(tc.getError().get(0).getMessage());
+            error.setErrorType(tc.getError().get(0).getType());
+            error.setStackTrace(tc.getError().get(0).getContent());
+            tr.setError(error);
+        }
+        else if(tc.getFailure() != null && tc.getFailure().size() > 0) {
+            TestRunError error = dtoFactory.newDTO(TestRunError.class);
+            error.setErrorMessage(tc.getFailure().get(0).getMessage());
+            error.setErrorType(tc.getFailure().get(0).getType());
+            error.setStackTrace(tc.getFailure().get(0).getContent());
+            tr.setError(error);
+        }
         result.add(tr);
     }
 
