@@ -252,8 +252,7 @@ public class OctaneServices extends CIPluginServicesBase {
             testResultStatus = TestRunResult.PASSED;
         }
 
-        TestRun tr = null;
-        tr = dtoFactory.newDTO(TestRun.class)
+        TestRun tr = dtoFactory.newDTO(TestRun.class)
                 .setModuleName("")
                 .setPackageName(ts.getPackage())
                 .setClassName(tc.getClassname())
