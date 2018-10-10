@@ -1,13 +1,16 @@
 package com.microfocus.octane.gitlab.model;
 
+import javafx.util.Pair;
 import org.apache.commons.codec.binary.Hex;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.MissingRequiredPropertiesException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
 
+import javax.annotation.PostConstruct;
 import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Supplier;
 
 @Component
 public class ConfigStructure {
@@ -66,10 +69,33 @@ public class ConfigStructure {
     @Value("${https.nonProxyHosts:#{null}}")
     private String httpsNonProxyHosts;
 
-    public String getServerBaseUrl() {
-        if (serverBaseUrl == null) {
-            throw new IllegalArgumentException("serverBaseUrl property must not be null");
+    @PostConstruct
+    public void init() {
+        List<Pair<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
+        mandatoryGetters.add(new Pair<>("octaneLocation", this::getOctaneLocation));
+        mandatoryGetters.add(new Pair<>("octaneSharedspace", this::getOctaneSharedspace));
+        mandatoryGetters.add(new Pair<>("octaneUsername", this::getOctaneUsername));
+        mandatoryGetters.add(new Pair<>("octanePassword", this::getOctanePassword));
+        mandatoryGetters.add(new Pair<>("gitlabLocation", this::getGitlabLocation));
+        mandatoryGetters.add(new Pair<>("gitlabPrivateToken", this::getGitlabPrivateToken));
+        Set<String> missingRequiredProperties = new LinkedHashSet();
+        mandatoryGetters.stream().forEach(mg -> {
+            if (mg.getValue().get() == null || mg.getValue().get().trim().isEmpty()) {
+                missingRequiredProperties.add(mg.getKey());
+            }
+        });
+
+        if (missingRequiredProperties.size() > 0) {
+            throw new MissingRequiredPropertiesException() {
+                @Override
+                public Set<String> getMissingRequiredProperties() {
+                    return missingRequiredProperties;
+                }
+            };
         }
+    }
+
+    public String getServerBaseUrl() {
         return serverBaseUrl;
     }
 
@@ -105,7 +131,7 @@ public class ConfigStructure {
     public String getProxyField(String protocol, String fieldName) {
         Optional<Field> field = Arrays.stream(this.getClass().getDeclaredFields()).filter(f -> f.getName().toLowerCase().equals(protocol.concat(fieldName).toLowerCase())).findFirst();
         if (!field.isPresent()) {
-            throw new IllegalArgumentException(protocol + '.' + fieldName);
+            throw new IllegalArgumentException(String.format("$s.$s", protocol, fieldName));
         }
         try {
             Object value = field.get().get(this);
