@@ -91,8 +91,8 @@ public class OctaneServices extends CIPluginServicesBase {
             result = dtoFactory.newDTO(OctaneConfiguration.class)
                     .setUrl(config.getOctaneLocation())
                     .setSharedSpace(config.getOctaneSharedspace())
-                    .setApiKey(config.getOctaneUsername())
-                    .setSecret(config.getOctanePassword());
+                    .setApiKey(config.getOctaneClientID())
+                    .setSecret(config.getOctaneSecret());
         }
         return result;
     }
@@ -109,7 +109,6 @@ public class OctaneServices extends CIPluginServicesBase {
 
     @Override
     public CIProxyConfiguration getProxyConfiguration(URL targetUrl) {
-        log.info("get proxy configuration");
         CIProxyConfiguration result = null;
         if (isProxyNeeded(targetUrl)) {
             ConfigStructure config = applicationSettings.getConfig();
@@ -216,7 +215,7 @@ public class OctaneServices extends CIPluginServicesBase {
 
     private List<ByteArrayInputStream> extractArtifacts(InputStream inputStream) {
         PathMatcher matcher = FileSystems.getDefault()
-                .getPathMatcher("glob:" + applicationSettings.getConfig().getGitlabArtifactPattern());
+                .getPathMatcher("glob:" + applicationSettings.getConfig().getGitlabTestResultsFilePattern());
         try {
             ZipInputStream zis = new ZipInputStream(inputStream);
             List<ByteArrayInputStream> result = new LinkedList<>();

@@ -24,11 +24,11 @@ public class ConfigStructure {
     @Value("${octane.sharedspace:#{null}}")
     private String octaneSharedspace;
 
-    @Value("${octane.username:#{null}}")
-    private String octaneUsername;
+    @Value("${octane.clientID:#{null}}")
+    private String octaneClientID;
 
-    @Value("${octane.password:#{null}}")
-    private String octanePassword;
+    @Value("${octane.secret:#{null}}")
+    private String octaneSecret;
 
     @Value("${gitlab.location:#{null}}")
     private String gitlabLocation;
@@ -36,8 +36,8 @@ public class ConfigStructure {
     @Value("${gitlab.privateToken:#{null}}")
     private String gitlabPrivateToken;
 
-    @Value("${gitlab.artifactPattern:**.xml}")
-    private String gitlabArtifactPattern;
+    @Value("${gitlab.testResultsFilePattern:**.xml}")
+    private String gitlabTestResultsFilePattern;
 
     @Value("${server.baseUrl:#{null}}")
     private String serverBaseUrl;
@@ -75,12 +75,12 @@ public class ConfigStructure {
     @PostConstruct
     public void init() {
         List<Pair<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
-        mandatoryGetters.add(new Pair<>("octaneLocation", this::getOctaneLocation));
-        mandatoryGetters.add(new Pair<>("octaneSharedspace", this::getOctaneSharedspace));
-        mandatoryGetters.add(new Pair<>("octaneUsername", this::getOctaneUsername));
-        mandatoryGetters.add(new Pair<>("octanePassword", this::getOctanePassword));
-        mandatoryGetters.add(new Pair<>("gitlabLocation", this::getGitlabLocation));
-        mandatoryGetters.add(new Pair<>("gitlabPrivateToken", this::getGitlabPrivateToken));
+        mandatoryGetters.add(new Pair<>("octane.location", this::getOctaneLocation));
+        mandatoryGetters.add(new Pair<>("octane.sharedspace", this::getOctaneSharedspace));
+        mandatoryGetters.add(new Pair<>("octane.clientID", this::getOctaneClientID));
+        mandatoryGetters.add(new Pair<>("octane.secret", this::getOctaneSecret));
+        mandatoryGetters.add(new Pair<>("gitlab.location", this::getGitlabLocation));
+        mandatoryGetters.add(new Pair<>("gitlab.privateToken", this::getGitlabPrivateToken));
         Set<String> missingRequiredProperties = new LinkedHashSet();
         mandatoryGetters.stream().forEach(mg -> {
             if (mg.getValue().get() == null || mg.getValue().get().trim().isEmpty()) {
@@ -115,12 +115,12 @@ public class ConfigStructure {
         return octaneSharedspace;
     }
 
-    public String getOctaneUsername() {
-        return octaneUsername;
+    public String getOctaneClientID() {
+        return octaneClientID;
     }
 
-    public String getOctanePassword() {
-        return octanePassword;
+    public String getOctaneSecret() {
+        return octaneSecret;
     }
 
     public String getGitlabLocation() {
@@ -131,8 +131,8 @@ public class ConfigStructure {
         return gitlabPrivateToken;
     }
 
-    public String getGitlabArtifactPattern() {
-        return gitlabArtifactPattern;
+    public String getGitlabTestResultsFilePattern() {
+        return gitlabTestResultsFilePattern;
     }
 
     public String getProxyField(String protocol, String fieldName) {
