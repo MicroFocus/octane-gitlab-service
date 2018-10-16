@@ -91,8 +91,8 @@ public class OctaneServices extends CIPluginServicesBase {
             result = dtoFactory.newDTO(OctaneConfiguration.class)
                     .setUrl(config.getOctaneLocation())
                     .setSharedSpace(config.getOctaneSharedspace())
-                    .setApiKey(config.getOctaneClientID())
-                    .setSecret(config.getOctaneSecret());
+                    .setApiKey(config.getOctaneApiClientID())
+                    .setSecret(config.getOctaneApiClientSecret());
         }
         return result;
     }

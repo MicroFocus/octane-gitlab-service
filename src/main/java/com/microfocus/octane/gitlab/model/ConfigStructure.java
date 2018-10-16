@@ -24,11 +24,11 @@ public class ConfigStructure {
     @Value("${octane.sharedspace:#{null}}")
     private String octaneSharedspace;
 
-    @Value("${octane.clientID:#{null}}")
-    private String octaneClientID;
+    @Value("${octane.apiClientID:#{null}}")
+    private String octaneApiClientID;
 
-    @Value("${octane.secret:#{null}}")
-    private String octaneSecret;
+    @Value("${octane.apiClientSecret:#{null}}")
+    private String octaneApiClientSecret;
 
     @Value("${gitlab.location:#{null}}")
     private String gitlabLocation;
@@ -77,8 +77,8 @@ public class ConfigStructure {
         List<Pair<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
         mandatoryGetters.add(new Pair<>("octane.location", this::getOctaneLocation));
         mandatoryGetters.add(new Pair<>("octane.sharedspace", this::getOctaneSharedspace));
-        mandatoryGetters.add(new Pair<>("octane.clientID", this::getOctaneClientID));
-        mandatoryGetters.add(new Pair<>("octane.secret", this::getOctaneSecret));
+        mandatoryGetters.add(new Pair<>("octane.apiClientID", this::getOctaneApiClientID));
+        mandatoryGetters.add(new Pair<>("octane.apiClientSecret", this::getOctaneApiClientSecret));
         mandatoryGetters.add(new Pair<>("gitlab.location", this::getGitlabLocation));
         mandatoryGetters.add(new Pair<>("gitlab.privateToken", this::getGitlabPrivateToken));
         Set<String> missingRequiredProperties = new LinkedHashSet();
@@ -115,12 +115,12 @@ public class ConfigStructure {
         return octaneSharedspace;
     }
 
-    public String getOctaneClientID() {
-        return octaneClientID;
+    public String getOctaneApiClientID() {
+        return octaneApiClientID;
     }
 
-    public String getOctaneSecret() {
-        return octaneSecret;
+    public String getOctaneApiClientSecret() {
+        return octaneApiClientSecret;
     }
 
     public String getGitlabLocation() {
