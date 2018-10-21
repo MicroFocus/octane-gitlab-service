@@ -167,11 +167,11 @@ public class EventListener {
 
     private CIEventCauseType convertCiEventCauseType(JSONObject obj, boolean isScmNull) {
         if (isScmNull) {
-            String pipelineSchedule;
+            String pipelineSchedule = null;
             try {
                 pipelineSchedule = isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString("pipeline_schedule") : null;
             } catch (Exception e) {
-                pipelineSchedule = null;
+                log.catching(e);
             }
             if (pipelineSchedule != null && pipelineSchedule.equals("true")) return CIEventCauseType.TIMER;
             return CIEventCauseType.USER;
