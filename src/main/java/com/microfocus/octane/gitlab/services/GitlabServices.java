@@ -44,7 +44,7 @@ public class GitlabServices {
         URL webhookListenerUrl = new URL(serverBaseUrl, "events");
         gitLabApi = gitLabApiWrapper.getGitLabApi();
         try {
-            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
+            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getOwnedProjects();
             for (Project project : projects) {
                 try {
                     for (ProjectHook hook : gitLabApi.getProjectApi().getHooks(project.getId())) {
