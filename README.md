@@ -26,13 +26,11 @@ gitlab.testResultsFilePattern=<optional: glob pattern for finding the test resul
 
 # HTTP(S) proxy oriented properties
 # =================================
-#http.proxyHost=<optional: http proxy host>
-#http.proxyPort=<optional: http proxy post>
+#http.proxyUrl=<optional: http proxy URL>
 #http.proxyUser=<optional: http proxy username>
 #http.proxyPassword=<optional: http proxy password>
 #http.nonProxyHosts=<optional: comma separated list of hosts to access without the http proxy>
-#https.proxyHost=<optional: https proxy host>
-#https.proxyPort=<optional: https proxy post>
+#https.proxyUrl=<optional: https proxy URL>
 #https.proxyUser=<optional: https proxy username>
 #https.proxyPassword=<optional: https proxy password>
 #https.nonProxyHosts=<optional: comma separated list of hosts to access without the https proxy>

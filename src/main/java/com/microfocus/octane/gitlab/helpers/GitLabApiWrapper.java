@@ -1,13 +1,17 @@
 package com.microfocus.octane.gitlab.helpers;
 
-import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
+import com.microfocus.octane.gitlab.model.ConfigStructure;
 import org.gitlab4j.api.GitLabApi;
+import org.gitlab4j.api.ProxyClientConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Map;
 
 @Component
 @Scope("singleton")
@@ -18,9 +22,18 @@ public class GitLabApiWrapper {
     private GitLabApi gitLabApi;
 
     @PostConstruct
-    public void initGitlabApiWrapper() {
+    public void initGitlabApiWrapper() throws MalformedURLException {
         ConfigStructure config = applicationSettings.getConfig();
-        gitLabApi = new GitLabApi(config.getGitlabLocation(), config.getGitlabPrivateToken());
+        Map<String, Object> proxyConfig = null;
+        String protocol = new URL(config.getGitlabLocation()).getProtocol().toLowerCase();
+        String proxyUrl = config.getProxyField(protocol, "proxyUrl");
+        if (proxyUrl != null) {
+            proxyConfig = ProxyClientConfig.createProxyClientConfig(
+                    proxyUrl,
+                    config.getProxyField(protocol, "proxyUser"),
+                    config.getProxyField(protocol, "proxyPassword"));
+        }
+        gitLabApi = new GitLabApi(config.getGitlabLocation(), config.getGitlabPrivateToken(), null, proxyConfig);
     }
 
     public GitLabApi getGitLabApi() {

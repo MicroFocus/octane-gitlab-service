@@ -1,6 +1,5 @@
 package com.microfocus.octane.gitlab.ui;
 
-import com.hp.octane.integrations.OctaneSDK;
 import org.springframework.stereotype.Component;
 
 import javax.ws.rs.GET;

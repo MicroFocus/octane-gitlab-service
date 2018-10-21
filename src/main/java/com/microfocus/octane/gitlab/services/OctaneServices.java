@@ -51,9 +51,9 @@ public class OctaneServices extends CIPluginServicesBase {
     private static final String pluginVersion = "9.1.5";
 
     private final GitLabApiWrapper gitLabApiWrapper;
-    private GitLabApi gitLabApi;
     private final ApplicationSettings applicationSettings;
     private final GitlabServices gitlabServices;
+    private GitLabApi gitLabApi;
 
     @Autowired
     public OctaneServices(GitLabApiWrapper gitLabApiWrapper, ApplicationSettings applicationSettings, GitlabServices gitlabServices) {
@@ -109,18 +109,24 @@ public class OctaneServices extends CIPluginServicesBase {
 
     @Override
     public CIProxyConfiguration getProxyConfiguration(URL targetUrl) {
-        CIProxyConfiguration result = null;
-        if (isProxyNeeded(targetUrl)) {
-            ConfigStructure config = applicationSettings.getConfig();
-            log.info("proxy is required for host " + targetUrl);
-            String protocol = targetUrl.getProtocol();
-            result = dtoFactory.newDTO(CIProxyConfiguration.class)
-                    .setHost(config.getProxyField(protocol, "proxyHost"))
-                    .setPort(Integer.parseInt(config.getProxyField(protocol, "proxyPort")))
-                    .setUsername(config.getProxyField(protocol, "proxyUser"))
-                    .setPassword(config.getProxyField(protocol, "proxyPassword"));
+        try {
+            CIProxyConfiguration result = null;
+            if (isProxyNeeded(targetUrl)) {
+                ConfigStructure config = applicationSettings.getConfig();
+                log.info("proxy is required for host " + targetUrl);
+                String protocol = targetUrl.getProtocol();
+                URL proxyUrl = new URL(config.getProxyField(protocol, "proxyUrl"));
+                result = dtoFactory.newDTO(CIProxyConfiguration.class)
+                        .setHost(proxyUrl.getHost())
+                        .setPort(proxyUrl.getPort())
+                        .setUsername(config.getProxyField(protocol, "proxyUser"))
+                        .setPassword(config.getProxyField(protocol, "proxyPassword"));
+            }
+            return result;
+        } catch (Exception e) {
+            log.catching(e);
+            return null;
         }
-        return result;
     }
 
 
@@ -258,14 +264,13 @@ public class OctaneServices extends CIPluginServicesBase {
                 .setTestName(tc.getName())
                 .setResult(testResultStatus)
                 .setDuration(Double.valueOf(tc.getTime()).longValue() * 1000);
-        if(tc.getError() != null && tc.getError().size() > 0) {
+        if (tc.getError() != null && tc.getError().size() > 0) {
             TestRunError error = dtoFactory.newDTO(TestRunError.class);
             error.setErrorMessage(tc.getError().get(0).getMessage());
             error.setErrorType(tc.getError().get(0).getType());
             error.setStackTrace(tc.getError().get(0).getContent());
             tr.setError(error);
-        }
-        else if(tc.getFailure() != null && tc.getFailure().size() > 0) {
+        } else if (tc.getFailure() != null && tc.getFailure().size() > 0) {
             TestRunError error = dtoFactory.newDTO(TestRunError.class);
             error.setErrorMessage(tc.getFailure().get(0).getMessage());
             error.setErrorType(tc.getFailure().get(0).getType());
@@ -278,7 +283,7 @@ public class OctaneServices extends CIPluginServicesBase {
     private boolean isProxyNeeded(URL targetHost) {
         boolean result = false;
         ConfigStructure config = applicationSettings.getConfig();
-        if (config.getProxyField(targetHost.getProtocol(), "proxyHost") != null) {
+        if (config.getProxyField(targetHost.getProtocol(), "proxyUrl") != null) {
             String nonProxyHostsStr = config.getProxyField(targetHost.getProtocol(), "nonProxyHosts");
             if (targetHost != null && !CIPluginSDKUtils.isNonProxyHost(targetHost.getHost(), nonProxyHostsStr)) {
                 result = true;

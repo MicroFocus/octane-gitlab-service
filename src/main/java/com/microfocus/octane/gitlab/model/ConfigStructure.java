@@ -42,11 +42,8 @@ public class ConfigStructure {
     @Value("${server.baseUrl:#{null}}")
     private String serverBaseUrl;
 
-    @Value("${http.proxyHost:#{null}}")
-    private String httpProxyHost;
-
-    @Value("${http.proxyPort:#{null}}")
-    private String httpProxyPort;
+    @Value("${http.proxyUrl:#{null}}")
+    private String httpProxyUrl;
 
     @Value("${http.proxyUser:#{null}}")
     private String httpProxyUser;
@@ -57,11 +54,8 @@ public class ConfigStructure {
     @Value("${http.nonProxyHosts:#{null}}")
     private String httpNonProxyHosts;
 
-    @Value("${https.proxyHost:#{null}}")
-    private String httpsProxyHost;
-
-    @Value("${https.proxyPort:#{null}}")
-    private String httpsProxyPort;
+    @Value("${https.proxyUrl:#{null}}")
+    private String httpsProxyUrl;
 
     @Value("${https.proxyUser:#{null}}")
     private String httpsProxyUser;
