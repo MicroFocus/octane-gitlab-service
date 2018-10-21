@@ -13,6 +13,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 
+import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.PREFIX;
+
 @Component
 @Scope("singleton")
 public class GitLabApiWrapper {
@@ -28,12 +30,28 @@ public class GitLabApiWrapper {
         String protocol = new URL(config.getGitlabLocation()).getProtocol().toLowerCase();
         String proxyUrl = config.getProxyField(protocol, "proxyUrl");
         if (proxyUrl != null) {
+            String proxyPassword = config.getProxyField(protocol, "proxyPassword");
+            if (proxyPassword.startsWith(PREFIX)) {
+                try {
+                    proxyPassword = PasswordEncryption.decrypt(proxyPassword.substring(PREFIX.length()));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
             proxyConfig = ProxyClientConfig.createProxyClientConfig(
                     proxyUrl,
                     config.getProxyField(protocol, "proxyUser"),
-                    config.getProxyField(protocol, "proxyPassword"));
+                    proxyPassword);
         }
-        gitLabApi = new GitLabApi(config.getGitlabLocation(), config.getGitlabPrivateToken(), null, proxyConfig);
+        String gitlabPrivateToken = config.getGitlabPrivateToken();
+        if (gitlabPrivateToken.startsWith(PREFIX)) {
+            try {
+                gitlabPrivateToken = PasswordEncryption.decrypt(gitlabPrivateToken.substring(PREFIX.length()));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        gitLabApi = new GitLabApi(config.getGitlabLocation(), gitlabPrivateToken, null, proxyConfig);
     }
 
     public GitLabApi getGitLabApi() {

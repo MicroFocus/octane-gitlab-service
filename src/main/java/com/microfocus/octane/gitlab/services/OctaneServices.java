@@ -12,6 +12,7 @@ import com.hp.octane.integrations.spi.CIPluginServicesBase;
 import com.hp.octane.integrations.util.CIPluginSDKUtils;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
+import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
@@ -42,6 +43,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
+import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.PREFIX;
 
 @Component
 @Scope("singleton")
@@ -88,11 +91,19 @@ public class OctaneServices extends CIPluginServicesBase {
         OctaneConfiguration result = null;
         ConfigStructure config = applicationSettings.getConfig();
         if (config != null && config.getOctaneLocation() != null && !config.getOctaneLocation().isEmpty() && config.getOctaneSharedspace() != null) {
+            String octaneApiClientSecret = config.getOctaneApiClientSecret();
+            if (octaneApiClientSecret.startsWith(PREFIX)) {
+                try {
+                    octaneApiClientSecret = PasswordEncryption.decrypt(octaneApiClientSecret.substring(PREFIX.length()));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
             result = dtoFactory.newDTO(OctaneConfiguration.class)
                     .setUrl(config.getOctaneLocation())
                     .setSharedSpace(config.getOctaneSharedspace())
                     .setApiKey(config.getOctaneApiClientID())
-                    .setSecret(config.getOctaneApiClientSecret());
+                    .setSecret(octaneApiClientSecret);
         }
         return result;
     }
@@ -116,11 +127,19 @@ public class OctaneServices extends CIPluginServicesBase {
                 log.info("proxy is required for host " + targetUrl);
                 String protocol = targetUrl.getProtocol();
                 URL proxyUrl = new URL(config.getProxyField(protocol, "proxyUrl"));
+                String proxyPassword = config.getProxyField(protocol, "proxyPassword");
+                if (proxyPassword.startsWith(PREFIX)) {
+                    try {
+                        proxyPassword = PasswordEncryption.decrypt(proxyPassword.substring(PREFIX.length()));
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
                 result = dtoFactory.newDTO(CIProxyConfiguration.class)
                         .setHost(proxyUrl.getHost())
                         .setPort(proxyUrl.getPort())
                         .setUsername(config.getProxyField(protocol, "proxyUser"))
-                        .setPassword(config.getProxyField(protocol, "proxyPassword"));
+                        .setPassword(proxyPassword);
             }
             return result;
         } catch (Exception e) {
