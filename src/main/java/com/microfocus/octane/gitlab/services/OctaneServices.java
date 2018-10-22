@@ -143,7 +143,7 @@ public class OctaneServices extends CIPluginServicesBase {
             }
             return result;
         } catch (Exception e) {
-            log.debug("Failed to infer the proxy configuration. Using null as default", e);
+            log.debug("Failed to return the proxy configuration, using null as default.", e);
             return null;
         }
     }
@@ -154,7 +154,7 @@ public class OctaneServices extends CIPluginServicesBase {
         try {
             return gitlabServices.getJobList();
         } catch (Exception e) {
-            log.debug("Failed to return the job list, using null as default", e);
+            log.debug("Failed to return the job list, using null as default.", e);
             return null;
         }
     }
@@ -164,7 +164,7 @@ public class OctaneServices extends CIPluginServicesBase {
         try {
             return gitlabServices.createStructure(rootJobCiId);
         } catch (Exception e) {
-            log.debug("Failed to return the pipeline, using null as default", e);
+            log.debug("Failed to return the pipeline, using null as default.", e);
             return null;
         }
     }
@@ -261,7 +261,7 @@ public class OctaneServices extends CIPluginServicesBase {
             }
             return result;
         } catch (IOException e) {
-            log.debug("Failed to extract the real artifacts. Using null as default", e);
+            log.debug("Failed to extract the real artifacts, using null as default.", e);
             return null;
         }
     }

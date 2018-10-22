@@ -217,7 +217,7 @@ public class EventListener {
             }
             return new URL(obj.getJSONObject("repository").getString("homepage")).getPath().substring(1);
         } catch (MalformedURLException e) {
-            log.debug("Failed to infer the project full path, using an empty string as default", e);
+            log.debug("Failed to return the project full path, using an empty string as default", e);
             return "";
         }
     }
@@ -276,7 +276,7 @@ public class EventListener {
         try {
             return isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").get("duration") : obj.get("build_duration");
         } catch (Exception e) {
-            log.debug("Failed to infer the duration", e);
+            log.debug("Failed to return the duration, using null as default.", e);
             return null;
         }
     }
@@ -286,7 +286,7 @@ public class EventListener {
             String time = isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString(attrName) : obj.getString("build_" + attrName);
             return time == null ? null : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.ENGLISH).parse(time).getTime();
         } catch (Exception e) {
-            log.debug("Failed to infer the time", e);
+            log.debug("Failed to return the time, using null as default.", e);
             return null;
         }
     }
