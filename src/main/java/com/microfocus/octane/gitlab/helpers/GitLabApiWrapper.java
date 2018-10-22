@@ -43,15 +43,15 @@ public class GitLabApiWrapper {
                     config.getProxyField(protocol, "proxyUser"),
                     proxyPassword);
         }
-        String gitlabPrivateToken = config.getGitlabPrivateToken();
-        if (gitlabPrivateToken.startsWith(PREFIX)) {
+        String gitlabPersonalAccessToken = config.getGitlabPersonalAccessToken();
+        if (gitlabPersonalAccessToken.startsWith(PREFIX)) {
             try {
-                gitlabPrivateToken = PasswordEncryption.decrypt(gitlabPrivateToken.substring(PREFIX.length()));
+                gitlabPersonalAccessToken = PasswordEncryption.decrypt(gitlabPersonalAccessToken.substring(PREFIX.length()));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
-        gitLabApi = new GitLabApi(config.getGitlabLocation(), gitlabPrivateToken, null, proxyConfig);
+        gitLabApi = new GitLabApi(config.getGitlabLocation(), gitlabPersonalAccessToken, null, proxyConfig);
     }
 
     public GitLabApi getGitLabApi() {

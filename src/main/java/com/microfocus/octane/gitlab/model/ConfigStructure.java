@@ -33,8 +33,8 @@ public class ConfigStructure {
     @Value("${gitlab.location:#{null}}")
     private String gitlabLocation;
 
-    @Value("${gitlab.privateToken:#{null}}")
-    private String gitlabPrivateToken;
+    @Value("${gitlab.personalAccessToken:#{null}}")
+    private String gitlabPersonalAccessToken;
 
     @Value("${gitlab.testResultsFilePattern:**.xml}")
     private String gitlabTestResultsFilePattern;
@@ -74,7 +74,7 @@ public class ConfigStructure {
         mandatoryGetters.add(new Pair<>("octane.apiClientID", this::getOctaneApiClientID));
         mandatoryGetters.add(new Pair<>("octane.apiClientSecret", this::getOctaneApiClientSecret));
         mandatoryGetters.add(new Pair<>("gitlab.location", this::getGitlabLocation));
-        mandatoryGetters.add(new Pair<>("gitlab.privateToken", this::getGitlabPrivateToken));
+        mandatoryGetters.add(new Pair<>("gitlab.personalAccessToken", this::getGitlabPersonalAccessToken));
         Set<String> missingRequiredProperties = new LinkedHashSet();
         mandatoryGetters.stream().forEach(mg -> {
             if (mg.getValue().get() == null || mg.getValue().get().trim().isEmpty()) {
@@ -121,8 +121,8 @@ public class ConfigStructure {
         return gitlabLocation;
     }
 
-    public String getGitlabPrivateToken() {
-        return gitlabPrivateToken;
+    public String getGitlabPersonalAccessToken() {
+        return gitlabPersonalAccessToken;
     }
 
     public String getGitlabTestResultsFilePattern() {

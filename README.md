@@ -20,7 +20,7 @@ octane.sharedspace=<mandatory: the target Octane shared space>
 octane.apiClientID=<mandatory: Octane API client ID with CI/CD integration role over the target workspace(s)>
 octane.apiClientSecret=<mandatory: Octane API client secret>
 gitlab.location=<mandatory: the base URL of the GitLab server>
-gitlab.privateToken=<mandatory: GitLab API private token>
+gitlab.personalAccessToken=<mandatory: GitLab API private token>
 gitlab.testResultsFilePattern=<optional: glob pattern for finding the test result files inside GitLab job artifact ZIP>
 
 
