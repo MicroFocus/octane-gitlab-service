@@ -143,7 +143,7 @@ public class OctaneServices extends CIPluginServicesBase {
             }
             return result;
         } catch (Exception e) {
-            log.catching(e);
+            log.debug("Failed to infer the proxy configuration. Using null as default", e);
             return null;
         }
     }
@@ -152,9 +152,9 @@ public class OctaneServices extends CIPluginServicesBase {
     @Override
     public CIJobsList getJobsList(boolean includeParameters) {
         try {
-            return gitlabServices.gotJobList();
+            return gitlabServices.getJobList();
         } catch (Exception e) {
-            log.catching(e);
+            log.debug("Failed to return the job list, using null as default", e);
             return null;
         }
     }
@@ -164,7 +164,7 @@ public class OctaneServices extends CIPluginServicesBase {
         try {
             return gitlabServices.createStructure(rootJobCiId);
         } catch (Exception e) {
-            log.catching(e);
+            log.debug("Failed to return the pipeline, using null as default", e);
             return null;
         }
     }
@@ -188,7 +188,7 @@ public class OctaneServices extends CIPluginServicesBase {
             Project project = gitLabApi.getProjectApi().getProject(buildIdParts[0].split(":")[1], buildIdParts[1]);
             gitLabApi.getPipelineApi().createPipeline(project.getId(), buildIdParts[2]);
         } catch (GitLabApiException e) {
-            log.catching(e);
+            log.debug("Failed to start a pipeline", e);
         }
     }
 
@@ -211,7 +211,7 @@ public class OctaneServices extends CIPluginServicesBase {
                         .setTestRuns(tests);
             }
         } catch (GitLabApiException e) {
-            log.catching(e);
+            log.debug("Failed to return test results", e);
         }
 
         return result;
@@ -233,7 +233,7 @@ public class OctaneServices extends CIPluginServicesBase {
                 }
             }
         } catch (Exception e) {
-            log.catching(e);
+            log.debug("Failed to create a test list based on the job artifacts", e);
         }
         return result;
     }
@@ -261,7 +261,7 @@ public class OctaneServices extends CIPluginServicesBase {
             }
             return result;
         } catch (IOException e) {
-            log.catching(e);
+            log.debug("Failed to extract the real artifacts. Using null as default", e);
             return null;
         }
     }

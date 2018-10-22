@@ -68,7 +68,7 @@ public class EventListener {
                 try {
                     log.trace(new ObjectMapper().writeValueAsString(event));
                 } catch (Exception e) {
-                    log.catching(e);
+                    log.debug("Failed to trace an incoming event", e);
                 }
                 OctaneSDK.getInstance().getEventsService().publishEvent(event);
             });
@@ -83,7 +83,7 @@ public class EventListener {
                 }
             }
         } catch (Exception e) {
-            log.catching(e);
+            log.debug("An error occurred while handling GitLab event", e);
         }
         log.traceExit();
     }
@@ -171,7 +171,7 @@ public class EventListener {
             try {
                 pipelineSchedule = isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString("pipeline_schedule") : null;
             } catch (Exception e) {
-                log.catching(e);
+                log.debug("Failed to infer event cause type, using 'USER' as default", e);
             }
             if (pipelineSchedule != null && pipelineSchedule.equals("true")) return CIEventCauseType.TIMER;
             return CIEventCauseType.USER;
@@ -217,7 +217,7 @@ public class EventListener {
             }
             return new URL(obj.getJSONObject("repository").getString("homepage")).getPath().substring(1);
         } catch (MalformedURLException e) {
-            log.catching(e);
+            log.debug("Failed to infer the project full path, using an empty string as default", e);
             return "";
         }
     }
@@ -252,7 +252,7 @@ public class EventListener {
                     });
                     commit.setChanges(changes);
                 } catch (GitLabApiException e) {
-                    log.catching(e);
+                    log.debug("Failed to add a commit to the SCM data", e);
                 }
                 commits.add(commit);
             });
@@ -267,7 +267,7 @@ public class EventListener {
             data.setCommits(commits);
             return data;
         } catch (GitLabApiException e) {
-            log.catching(e);
+            log.debug("Failed to return the SCM data. Returning null.");
             return null;
         }
     }
@@ -276,7 +276,7 @@ public class EventListener {
         try {
             return isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").get("duration") : obj.get("build_duration");
         } catch (Exception e) {
-            log.catching(e);
+            log.debug("Failed to infer the duration", e);
             return null;
         }
     }
@@ -286,7 +286,7 @@ public class EventListener {
             String time = isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString(attrName) : obj.getString("build_" + attrName);
             return time == null ? null : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.ENGLISH).parse(time).getTime();
         } catch (Exception e) {
-            log.catching(e);
+            log.debug("Failed to infer the time", e);
             return null;
         }
     }

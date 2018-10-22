@@ -52,7 +52,7 @@ public class GitlabServices {
                             try {
                                 gitLabApi.getProjectApi().deleteHook(project.getId(), hook.getId());
                             } catch (GitLabApiException e) {
-                                log.catching(e);
+                                log.debug("Failed to delete a GitLab web hook", e);
                             }
                         }
                     }
@@ -61,15 +61,15 @@ public class GitlabServices {
                     hook.setPipelineEvents(true);
                     gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
                 } catch (GitLabApiException e) {
-                    log.catching(e);
+                    log.debug("Failed to create a GitLab web hook", e);
                 }
             }
         } catch (GitLabApiException e) {
-            log.catching(e);
+            log.debug("Failed to create GitLab web hooks", e);
         }
     }
 
-    CIJobsList gotJobList() {
+    CIJobsList getJobList() {
         CIJobsList ciJobsList = dtoFactory.newDTO(CIJobsList.class);
         List<PipelineNode> list = new ArrayList<>();
         try {
@@ -91,7 +91,7 @@ public class GitlabServices {
                 }
             }
         } catch (Exception e) {
-            log.catching(e);
+            log.debug("Failed to add some jobs to the returned list", e);
         }
 
         ciJobsList.setJobs(list.toArray(new PipelineNode[list.size()]));
