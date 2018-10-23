@@ -53,7 +53,7 @@ java –jar the octane-gitlab-service-*.jar
 All the sensitive tokens in the *'application.properties'* file can be encrypted. For encrypting a sensitive token, run the following command line:
 
 ```bash
-java –jar the octane-gitlab-service-*.jar encrypt <sensitive_token>
+java –jar octane-gitlab-service-*.jar encrypt <sensitive_token>
 ``` 
 
 The result should look like:
