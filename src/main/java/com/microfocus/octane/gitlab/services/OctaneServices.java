@@ -240,13 +240,11 @@ public class OctaneServices extends CIPluginServicesBase {
 
     private List<ByteArrayInputStream> extractArtifacts(InputStream inputStream) {
         PathMatcher matcher = FileSystems.getDefault()
-                .getPathMatcher("glob:" + applicationSettings.getConfig().getGitlabTestResultsFilePattern());
+                .getPathMatcher(applicationSettings.getConfig().getGitlabTestResultsFilePattern());
         try {
             ZipInputStream zis = new ZipInputStream(inputStream);
             List<ByteArrayInputStream> result = new LinkedList<>();
             for (ZipEntry entry = zis.getNextEntry(); entry != null; entry = zis.getNextEntry()) {
-                System.out.println("entry: " + entry.getName() + ", " + entry.getSize());
-                // consume all the data from this entry
                 if (matcher.matches(Paths.get(entry.getName()))) {
                     while (zis.available() > 0) {
                         ByteArrayOutputStream entryStream = new ByteArrayOutputStream();
