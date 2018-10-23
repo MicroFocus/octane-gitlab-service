@@ -37,7 +37,7 @@ gitlab.testResultsFilePattern=<optional: glob pattern for finding the test resul
 ```
 -	From a command line prompt open on the target directory, run the command line below:
 ```bash
-java –jar the octane-gitlab-service-*.jar
+java –jar octane-gitlab-service-<version>.jar
 ```
 -	Create a new GitLab CI server entity in Octane.
 -	Go to the Pipelines module.
@@ -53,7 +53,7 @@ java –jar the octane-gitlab-service-*.jar
 All the sensitive tokens in the *'application.properties'* file can be encrypted. For encrypting a sensitive token, run the following command line:
 
 ```bash
-java –jar octane-gitlab-service-*.jar encrypt <sensitive_token>
+java –jar octane-gitlab-service-<version>.jar encrypt <sensitive_token>
 ``` 
 
 The result should look like:
