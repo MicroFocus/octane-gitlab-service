@@ -22,7 +22,7 @@ octane.apiClientSecret=<sensitive,mandatory: Octane API client secret>
 gitlab.location=<mandatory: the base URL of the GitLab server>
 gitlab.personalAccessToken=<sensitive,mandatory: GitLab personal access token>
 gitlab.testResultsFilePattern=<optional: 'glob:pattern' or 'regex:pattern' pattern for finding the test result files inside GitLab job artifact ZIP>.
-For complete documentation of the applicable patterns see [this doc](https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileSystem.html#getPathMatcher-java.lang.String-)
+For complete documentation of the applicable patterns see [`this doc`](https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileSystem.html#getPathMatcher-java.lang.String-)
 
 
 # HTTP(S) proxy oriented properties
