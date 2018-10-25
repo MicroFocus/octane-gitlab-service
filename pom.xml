@@ -18,6 +18,14 @@
         <integrations.sdk.version>1.5.23</integrations.sdk.version>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>jenkins-repo</id>
+            <name>Jenkins Maven Repository</name>
+            <url>https://mvnrepository.com/artifact/org.jenkins-ci.plugins/nunit</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
