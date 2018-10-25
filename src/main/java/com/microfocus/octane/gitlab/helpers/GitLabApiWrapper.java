@@ -3,12 +3,14 @@ package com.microfocus.octane.gitlab.helpers;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import org.gitlab4j.api.GitLabApi;
+import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.ProxyClientConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.naming.ConfigurationException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
@@ -28,7 +30,7 @@ public class GitLabApiWrapper {
     }
 
     @PostConstruct
-    public void initGitlabApiWrapper() throws MalformedURLException {
+    public void initGitlabApiWrapper() throws MalformedURLException, GitLabApiException, ConfigurationException {
         ConfigStructure config = applicationSettings.getConfig();
         Map<String, Object> proxyConfig = null;
         String protocol = new URL(config.getGitlabLocation()).getProtocol().toLowerCase();
@@ -56,6 +58,12 @@ public class GitLabApiWrapper {
             }
         }
         gitLabApi = new GitLabApi(config.getGitlabLocation(), gitlabPersonalAccessToken, null, proxyConfig);
+        try {
+            gitLabApi.getProjectApi().getProjects();
+        } catch(GitLabApiException e) {
+            ConfigurationException w = new ConfigurationException("GitLab API failed to perform basic operations. Please validate GitLab properties - location, personalAccessToken(including token permissions/scopes in GitLab server)");
+            throw w;
+        }
     }
 
     public GitLabApi getGitLabApi() {
