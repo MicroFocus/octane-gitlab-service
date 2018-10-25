@@ -31,7 +31,7 @@ public class GitLabApiWrapper {
         String proxyUrl = config.getProxyField(protocol, "proxyUrl");
         if (proxyUrl != null) {
             String proxyPassword = config.getProxyField(protocol, "proxyPassword");
-            if (proxyPassword.startsWith(PREFIX)) {
+            if (proxyPassword != null && proxyPassword.startsWith(PREFIX)) {
                 try {
                     proxyPassword = PasswordEncryption.decrypt(proxyPassword.substring(PREFIX.length()));
                 } catch (Exception e) {
@@ -44,7 +44,7 @@ public class GitLabApiWrapper {
                     proxyPassword);
         }
         String gitlabPersonalAccessToken = config.getGitlabPersonalAccessToken();
-        if (gitlabPersonalAccessToken.startsWith(PREFIX)) {
+        if (gitlabPersonalAccessToken != null && gitlabPersonalAccessToken.startsWith(PREFIX)) {
             try {
                 gitlabPersonalAccessToken = PasswordEncryption.decrypt(gitlabPersonalAccessToken.substring(PREFIX.length()));
             } catch (Exception e) {

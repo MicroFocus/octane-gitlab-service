@@ -17,6 +17,7 @@ import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
 import com.microfocus.octane.gitlab.model.junit5.Testsuites;
+import javafx.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
@@ -26,9 +27,19 @@ import org.gitlab4j.api.models.Project;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
 
 import javax.annotation.PostConstruct;
 import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -45,6 +56,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.PREFIX;
+import static hudson.plugins.nunit.NUnitReportTransformer.NUNIT_TO_JUNIT_XSLFILE_STR;
 
 @Component
 @Scope("singleton")
@@ -57,9 +69,10 @@ public class OctaneServices extends CIPluginServicesBase {
     private final ApplicationSettings applicationSettings;
     private final GitlabServices gitlabServices;
     private GitLabApi gitLabApi;
+    private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
 
     @Autowired
-    public OctaneServices(GitLabApiWrapper gitLabApiWrapper, ApplicationSettings applicationSettings, GitlabServices gitlabServices) {
+    public OctaneServices(GitLabApiWrapper gitLabApiWrapper, ApplicationSettings applicationSettings, GitlabServices gitlabServices) throws TransformerConfigurationException {
         this.gitLabApiWrapper = gitLabApiWrapper;
         this.applicationSettings = applicationSettings;
         this.gitlabServices = gitlabServices;
@@ -92,7 +105,7 @@ public class OctaneServices extends CIPluginServicesBase {
         ConfigStructure config = applicationSettings.getConfig();
         if (config != null && config.getOctaneLocation() != null && !config.getOctaneLocation().isEmpty() && config.getOctaneSharedspace() != null) {
             String octaneApiClientSecret = config.getOctaneApiClientSecret();
-            if (octaneApiClientSecret.startsWith(PREFIX)) {
+            if (octaneApiClientSecret != null && octaneApiClientSecret.startsWith(PREFIX)) {
                 try {
                     octaneApiClientSecret = PasswordEncryption.decrypt(octaneApiClientSecret.substring(PREFIX.length()));
                 } catch (Exception e) {
@@ -128,7 +141,7 @@ public class OctaneServices extends CIPluginServicesBase {
                 String protocol = targetUrl.getProtocol();
                 URL proxyUrl = new URL(config.getProxyField(protocol, "proxyUrl"));
                 String proxyPassword = config.getProxyField(protocol, "proxyPassword");
-                if (proxyPassword.startsWith(PREFIX)) {
+                if (proxyPassword != null && proxyPassword.startsWith(PREFIX)) {
                     try {
                         proxyPassword = PasswordEncryption.decrypt(proxyPassword.substring(PREFIX.length()));
                     } catch (Exception e) {
@@ -210,25 +223,33 @@ public class OctaneServices extends CIPluginServicesBase {
                 result.setBuildContext(buildContext)
                         .setTestRuns(tests);
             }
-        } catch (GitLabApiException e) {
+        } catch (Exception e) {
             log.debug("Failed to return test results", e);
         }
 
         return result;
     }
 
-    private List<TestRun> createTestList(Integer projectId, Job job) {
+    private List<TestRun> createTestList(Integer projectId, Job job) throws TransformerConfigurationException {
         List<TestRun> result = new ArrayList<>();
         try {
             if (job.getArtifactsFile() != null) {
-                List<ByteArrayInputStream> artifacts = extractArtifacts(gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+                List<Pair<String, ByteArrayInputStream>> artifacts = extractArtifacts(gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
                 JAXBContext jaxbContext = JAXBContext.newInstance(Testsuites.class);
-                for (ByteArrayInputStream artifact : artifacts) {
-                    Object ots = jaxbContext.createUnmarshaller().unmarshal(artifact);
-                    if (ots instanceof Testsuites) {
-                        ((Testsuites) ots).getTestsuite().forEach(ts -> ts.getTestcase().forEach(tc -> addTestCase(result, ts, tc)));
-                    } else if (ots instanceof Testsuite) {
-                        ((Testsuite) ots).getTestcase().forEach(tc -> addTestCase(result, (Testsuite) ots, tc));
+                for (Pair<String, ByteArrayInputStream> artifact : artifacts) {
+                    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+                    DocumentBuilder db = dbf.newDocumentBuilder();
+                    Document doc = db.parse(new InputSource(artifact.getValue()));
+                    String rootTagName = doc.getDocumentElement().getTagName().toLowerCase();
+                    artifact.getValue().reset();
+                    if(rootTagName.equals("testsuites") || rootTagName.equals("testsuite")) {
+                        unmarshallAndAddToResults(result, jaxbContext, artifact.getValue());
+                    } else if(rootTagName.equals("test-run") || rootTagName.equals("test-results")) {
+                        ByteArrayOutputStream os = new ByteArrayOutputStream();
+                        nunitTransformer.transform(new StreamSource(artifact.getValue()), new StreamResult(os));
+                        unmarshallAndAddToResults(result, jaxbContext, new ByteArrayInputStream(os.toByteArray()));
+                    } else {
+                        log.error(String.format("Artifact %s: unknown test result format that starts with the <%s> tag", artifact.getKey(), rootTagName));
                     }
                 }
             }
@@ -238,12 +259,21 @@ public class OctaneServices extends CIPluginServicesBase {
         return result;
     }
 
-    private List<ByteArrayInputStream> extractArtifacts(InputStream inputStream) {
+    private void unmarshallAndAddToResults(List<TestRun> result, JAXBContext jaxbContext, ByteArrayInputStream artifact) throws JAXBException {
+        Object ots = jaxbContext.createUnmarshaller().unmarshal(artifact);
+        if (ots instanceof Testsuites) {
+            ((Testsuites) ots).getTestsuite().forEach(ts -> ts.getTestcase().forEach(tc -> addTestCase(result, ts, tc)));
+        } else if (ots instanceof Testsuite) {
+            ((Testsuite) ots).getTestcase().forEach(tc -> addTestCase(result, (Testsuite) ots, tc));
+        }
+    }
+
+    private List<Pair<String, ByteArrayInputStream>> extractArtifacts(InputStream inputStream) {
         PathMatcher matcher = FileSystems.getDefault()
                 .getPathMatcher(applicationSettings.getConfig().getGitlabTestResultsFilePattern());
         try {
             ZipInputStream zis = new ZipInputStream(inputStream);
-            List<ByteArrayInputStream> result = new LinkedList<>();
+            List<Pair<String, ByteArrayInputStream>> result = new LinkedList();
             for (ZipEntry entry = zis.getNextEntry(); entry != null; entry = zis.getNextEntry()) {
                 if (matcher.matches(Paths.get(entry.getName()))) {
                     while (zis.available() > 0) {
@@ -253,7 +283,7 @@ public class OctaneServices extends CIPluginServicesBase {
                         while ((length = zis.read(buffer)) != -1) {
                             entryStream.write(buffer, 0, length);
                         }
-                        result.add(new ByteArrayInputStream(entryStream.toByteArray()));
+                        result.add(new Pair(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
                     }
                 }
             }

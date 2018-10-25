@@ -48,6 +48,11 @@
             <artifactId>gitlab4j-api</artifactId>
             <version>4.8.45</version>
         </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>nunit</artifactId>
+            <version>0.23</version>
+        </dependency>
 
         <!-- TEST -->
         <dependency>
@@ -69,20 +74,20 @@
                 <version>2.4</version>
                 <executions>
                     <execution>
-                        <id>xjc</id>
+                        <id>junit5</id>
                         <goals>
                             <goal>xjc</goal>
                         </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/main/resources/junit5.xsd</source>
+                            </sources>
+                            <packageName>com.microfocus.octane.gitlab.model.junit5</packageName>
+                            <outputDirectory>src/main/java</outputDirectory>
+                            <clearOutputDir>false</clearOutputDir>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <sources>
-                        <source>src/main/resources/junit5.xsd</source>
-                    </sources>
-                    <packageName>com.microfocus.octane.gitlab.model.junit5</packageName>
-                    <outputDirectory>src/main/java</outputDirectory>
-                    <clearOutputDir>false</clearOutputDir>
-                </configuration>
             </plugin>
         </plugins>
 
