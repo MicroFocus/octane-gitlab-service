@@ -22,7 +22,7 @@
         <repository>
             <id>jenkins-repo</id>
             <name>Jenkins Maven Repository</name>
-            <url>https://mvnrepository.com/artifact/org.jenkins-ci.plugins/nunit</url>
+            <url>http://repo.jenkins-ci.org/releases/</url>
         </repository>
     </repositories>
 
