@@ -102,21 +102,25 @@ public class OctaneServices extends CIPluginServicesBase {
     @Override
     public OctaneConfiguration getOctaneConfiguration() {
         OctaneConfiguration result = null;
-        ConfigStructure config = applicationSettings.getConfig();
-        if (config != null && config.getOctaneLocation() != null && !config.getOctaneLocation().isEmpty() && config.getOctaneSharedspace() != null) {
-            String octaneApiClientSecret = config.getOctaneApiClientSecret();
-            if (octaneApiClientSecret != null && octaneApiClientSecret.startsWith(PREFIX)) {
-                try {
-                    octaneApiClientSecret = PasswordEncryption.decrypt(octaneApiClientSecret.substring(PREFIX.length()));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+        try {
+            ConfigStructure config = applicationSettings.getConfig();
+            if (config != null && config.getOctaneLocation() != null && !config.getOctaneLocation().isEmpty() && config.getOctaneSharedspace() != null) {
+                String octaneApiClientSecret = config.getOctaneApiClientSecret();
+                if (octaneApiClientSecret != null && octaneApiClientSecret.startsWith(PREFIX)) {
+                    try {
+                        octaneApiClientSecret = PasswordEncryption.decrypt(octaneApiClientSecret.substring(PREFIX.length()));
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 }
+                result = dtoFactory.newDTO(OctaneConfiguration.class)
+                        .setUrl(config.getOctaneLocation())
+                        .setSharedSpace(config.getOctaneSharedspace())
+                        .setApiKey(config.getOctaneApiClientID())
+                        .setSecret(octaneApiClientSecret);
             }
-            result = dtoFactory.newDTO(OctaneConfiguration.class)
-                    .setUrl(config.getOctaneLocation())
-                    .setSharedSpace(config.getOctaneSharedspace())
-                    .setApiKey(config.getOctaneApiClientID())
-                    .setSecret(octaneApiClientSecret);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
         return result;
     }
@@ -334,7 +338,7 @@ public class OctaneServices extends CIPluginServicesBase {
     }
 
     private boolean isProxyNeeded(URL targetHost) {
-        if(targetHost == null) return false;
+        if (targetHost == null) return false;
         boolean result = false;
         ConfigStructure config = applicationSettings.getConfig();
         if (config.getProxyField(targetHost.getProtocol(), "proxyUrl") != null) {

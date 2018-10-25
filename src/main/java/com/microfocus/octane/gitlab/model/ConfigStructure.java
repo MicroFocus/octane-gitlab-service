@@ -2,15 +2,22 @@ package com.microfocus.octane.gitlab.model;
 
 import javafx.util.Pair;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.MissingRequiredPropertiesException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
 
 import javax.annotation.PostConstruct;
+import javax.validation.ValidationException;
 import java.lang.reflect.Field;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Component
 public class ConfigStructure {
@@ -21,7 +28,6 @@ public class ConfigStructure {
     @Value("${octane.location:#{null}}")
     private String octaneLocation;
 
-    @Value("${octane.sharedspace:#{null}}")
     private String octaneSharedspace;
 
     @Value("${octane.apiClientID:#{null}}")
@@ -67,28 +73,38 @@ public class ConfigStructure {
     private String httpsNonProxyHosts;
 
     @PostConstruct
-    public void init() {
+    public void init() throws URISyntaxException {
         List<Pair<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
         mandatoryGetters.add(new Pair<>("octane.location", this::getOctaneLocation));
-        mandatoryGetters.add(new Pair<>("octane.sharedspace", this::getOctaneSharedspace));
         mandatoryGetters.add(new Pair<>("octane.apiClientID", this::getOctaneApiClientID));
         mandatoryGetters.add(new Pair<>("octane.apiClientSecret", this::getOctaneApiClientSecret));
         mandatoryGetters.add(new Pair<>("gitlab.location", this::getGitlabLocation));
         mandatoryGetters.add(new Pair<>("gitlab.personalAccessToken", this::getGitlabPersonalAccessToken));
-        Set<String> missingRequiredProperties = new LinkedHashSet<>();
+        Set<String> validationErrors = new LinkedHashSet<>();
         mandatoryGetters.forEach(mg -> {
             if (mg.getValue().get() == null || mg.getValue().get().trim().isEmpty()) {
-                missingRequiredProperties.add(mg.getKey());
+                validationErrors.add("Missing property " + mg.getKey());
             }
         });
 
-        if (missingRequiredProperties.size() > 0) {
-            throw new MissingRequiredPropertiesException() {
-                @Override
-                public Set<String> getMissingRequiredProperties() {
-                    return missingRequiredProperties;
-                }
-            };
+        List<NameValuePair> params = URLEncodedUtils.parse(new URI(octaneLocation), Charset.forName("UTF-8"));
+        Optional<NameValuePair> sharedspace = params.stream().filter(p -> p.getName().toLowerCase().equals("p")).findFirst();
+        if (!sharedspace.isPresent()) {
+            validationErrors.add("Missing 'p' query parameter in octane.location");
+        } else {
+            octaneSharedspace = sharedspace.get().getValue();
+        }
+
+        int contextPos = octaneLocation.indexOf("/ui");
+        if (contextPos < 0) {
+            validationErrors.add("Missing /ui path in octane.location");
+        } else {
+            octaneLocation = octaneLocation.substring(0, contextPos);
+        }
+
+        if (validationErrors.size() > 0) {
+            AtomicInteger counter = new AtomicInteger(1);
+            throw new ValidationException(validationErrors.stream().map(e -> (counter.getAndIncrement() + ": " + e)).collect(Collectors.joining("\n", "\n", "")));
         }
     }
 
