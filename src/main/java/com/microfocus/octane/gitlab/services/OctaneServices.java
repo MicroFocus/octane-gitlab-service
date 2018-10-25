@@ -68,8 +68,8 @@ public class OctaneServices extends CIPluginServicesBase {
     private final GitLabApiWrapper gitLabApiWrapper;
     private final ApplicationSettings applicationSettings;
     private final GitlabServices gitlabServices;
-    private GitLabApi gitLabApi;
     private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
+    private GitLabApi gitLabApi;
 
     @Autowired
     public OctaneServices(GitLabApiWrapper gitLabApiWrapper, ApplicationSettings applicationSettings, GitlabServices gitlabServices) throws TransformerConfigurationException {
@@ -230,7 +230,7 @@ public class OctaneServices extends CIPluginServicesBase {
         return result;
     }
 
-    private List<TestRun> createTestList(Integer projectId, Job job) throws TransformerConfigurationException {
+    private List<TestRun> createTestList(Integer projectId, Job job) {
         List<TestRun> result = new ArrayList<>();
         try {
             if (job.getArtifactsFile() != null) {
@@ -242,14 +242,20 @@ public class OctaneServices extends CIPluginServicesBase {
                     Document doc = db.parse(new InputSource(artifact.getValue()));
                     String rootTagName = doc.getDocumentElement().getTagName().toLowerCase();
                     artifact.getValue().reset();
-                    if(rootTagName.equals("testsuites") || rootTagName.equals("testsuite")) {
-                        unmarshallAndAddToResults(result, jaxbContext, artifact.getValue());
-                    } else if(rootTagName.equals("test-run") || rootTagName.equals("test-results")) {
-                        ByteArrayOutputStream os = new ByteArrayOutputStream();
-                        nunitTransformer.transform(new StreamSource(artifact.getValue()), new StreamResult(os));
-                        unmarshallAndAddToResults(result, jaxbContext, new ByteArrayInputStream(os.toByteArray()));
-                    } else {
-                        log.error(String.format("Artifact %s: unknown test result format that starts with the <%s> tag", artifact.getKey(), rootTagName));
+                    switch (rootTagName) {
+                        case "testsuites":
+                        case "testsuite":
+                            unmarshallAndAddToResults(result, jaxbContext, artifact.getValue());
+                            break;
+                        case "test-run":
+                        case "test-results":
+                            ByteArrayOutputStream os = new ByteArrayOutputStream();
+                            nunitTransformer.transform(new StreamSource(artifact.getValue()), new StreamResult(os));
+                            unmarshallAndAddToResults(result, jaxbContext, new ByteArrayInputStream(os.toByteArray()));
+                            break;
+                        default:
+                            log.error(String.format("Artifact %s: unknown test result format that starts with the <%s> tag", artifact.getKey(), rootTagName));
+                            break;
                     }
                 }
             }
@@ -273,7 +279,7 @@ public class OctaneServices extends CIPluginServicesBase {
                 .getPathMatcher(applicationSettings.getConfig().getGitlabTestResultsFilePattern());
         try {
             ZipInputStream zis = new ZipInputStream(inputStream);
-            List<Pair<String, ByteArrayInputStream>> result = new LinkedList();
+            List<Pair<String, ByteArrayInputStream>> result = new LinkedList<>();
             for (ZipEntry entry = zis.getNextEntry(); entry != null; entry = zis.getNextEntry()) {
                 if (matcher.matches(Paths.get(entry.getName()))) {
                     while (zis.available() > 0) {
@@ -283,7 +289,7 @@ public class OctaneServices extends CIPluginServicesBase {
                         while ((length = zis.read(buffer)) != -1) {
                             entryStream.write(buffer, 0, length);
                         }
-                        result.add(new Pair(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
+                        result.add(new Pair<>(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
                     }
                 }
             }
@@ -295,7 +301,7 @@ public class OctaneServices extends CIPluginServicesBase {
     }
 
     private void addTestCase(List<TestRun> result, Testsuite ts, Testcase tc) {
-        TestRunResult testResultStatus = null;
+        TestRunResult testResultStatus;
         if (tc.getSkipped() != null && tc.getSkipped().trim().length() > 0) {
             testResultStatus = TestRunResult.SKIPPED;
         } else if (tc.getFailure().size() > 0) {
@@ -328,11 +334,12 @@ public class OctaneServices extends CIPluginServicesBase {
     }
 
     private boolean isProxyNeeded(URL targetHost) {
+        if(targetHost == null) return false;
         boolean result = false;
         ConfigStructure config = applicationSettings.getConfig();
         if (config.getProxyField(targetHost.getProtocol(), "proxyUrl") != null) {
             String nonProxyHostsStr = config.getProxyField(targetHost.getProtocol(), "nonProxyHosts");
-            if (targetHost != null && !CIPluginSDKUtils.isNonProxyHost(targetHost.getHost(), nonProxyHostsStr)) {
+            if (!CIPluginSDKUtils.isNonProxyHost(targetHost.getHost(), nonProxyHostsStr)) {
                 result = true;
             }
         }

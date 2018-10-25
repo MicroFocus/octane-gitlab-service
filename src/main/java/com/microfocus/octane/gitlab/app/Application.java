@@ -7,8 +7,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+
 import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.encrypt;
 
 @SpringBootApplication

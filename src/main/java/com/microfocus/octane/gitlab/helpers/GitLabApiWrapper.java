@@ -19,9 +19,13 @@ import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.PREFIX;
 @Scope("singleton")
 public class GitLabApiWrapper {
 
-    @Autowired
-    private ApplicationSettings applicationSettings;
+    private final ApplicationSettings applicationSettings;
     private GitLabApi gitLabApi;
+
+    @Autowired
+    public GitLabApiWrapper(ApplicationSettings applicationSettings) {
+        this.applicationSettings = applicationSettings;
+    }
 
     @PostConstruct
     public void initGitlabApiWrapper() throws MalformedURLException {

@@ -37,12 +37,10 @@ import java.util.*;
 public class EventListener {
     private static final Logger log = LogManager.getLogger(EventListener.class);
     private static final DTOFactory dtoFactory = DTOFactory.getInstance();
-    private final GitLabApiWrapper gitLabApiWrapper;
-    private GitLabApi gitLabApi;
+    private final GitLabApi gitLabApi;
 
     @Autowired
     public EventListener(GitLabApiWrapper gitLabApiWrapper) {
-        this.gitLabApiWrapper = gitLabApiWrapper;
         this.gitLabApi = gitLabApiWrapper.getGitLabApi();
     }
 

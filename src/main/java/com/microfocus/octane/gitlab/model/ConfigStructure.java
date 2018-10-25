@@ -75,8 +75,8 @@ public class ConfigStructure {
         mandatoryGetters.add(new Pair<>("octane.apiClientSecret", this::getOctaneApiClientSecret));
         mandatoryGetters.add(new Pair<>("gitlab.location", this::getGitlabLocation));
         mandatoryGetters.add(new Pair<>("gitlab.personalAccessToken", this::getGitlabPersonalAccessToken));
-        Set<String> missingRequiredProperties = new LinkedHashSet();
-        mandatoryGetters.stream().forEach(mg -> {
+        Set<String> missingRequiredProperties = new LinkedHashSet<>();
+        mandatoryGetters.forEach(mg -> {
             if (mg.getValue().get() == null || mg.getValue().get().trim().isEmpty()) {
                 missingRequiredProperties.add(mg.getKey());
             }
@@ -132,13 +132,13 @@ public class ConfigStructure {
     public String getProxyField(String protocol, String fieldName) {
         Optional<Field> field = Arrays.stream(this.getClass().getDeclaredFields()).filter(f -> f.getName().toLowerCase().equals(protocol.concat(fieldName).toLowerCase())).findFirst();
         if (!field.isPresent()) {
-            throw new IllegalArgumentException(String.format("$s.$s", protocol, fieldName));
+            throw new IllegalArgumentException(String.format("%s.%s", protocol, fieldName));
         }
         try {
             Object value = field.get().get(this);
             return value != null ? value.toString() : null;
         } catch (IllegalAccessException e) {
-            throw new IllegalArgumentException(String.format("$s.$s field in not accessible", protocol, fieldName));
+            throw new IllegalArgumentException(String.format("%s.%s field in not accessible", protocol, fieldName));
         }
     }
 }
