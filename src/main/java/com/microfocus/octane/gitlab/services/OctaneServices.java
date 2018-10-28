@@ -10,6 +10,7 @@ import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.hp.octane.integrations.dto.tests.*;
 import com.hp.octane.integrations.spi.CIPluginServicesBase;
 import com.hp.octane.integrations.util.CIPluginSDKUtils;
+import com.microfocus.octane.gitlab.app.Application;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
@@ -63,7 +64,6 @@ import static hudson.plugins.nunit.NUnitReportTransformer.NUNIT_TO_JUNIT_XSLFILE
 public class OctaneServices extends CIPluginServicesBase {
     private static final Logger log = LogManager.getLogger(OctaneServices.class);
     private static final DTOFactory dtoFactory = DTOFactory.getInstance();
-    private static final String pluginVersion = "9.1.5";
 
     private final GitLabApiWrapper gitLabApiWrapper;
     private final ApplicationSettings applicationSettings;
@@ -85,12 +85,13 @@ public class OctaneServices extends CIPluginServicesBase {
 
     @Override
     public CIServerInfo getServerInfo() {
+        System.out.println("**************************************** " + Application.class.getPackage().getImplementationVersion());
         return dtoFactory.newDTO(CIServerInfo.class)
                 .setInstanceId(applicationSettings.getConfig().getCiServerIdentity())
                 .setSendingTime(System.currentTimeMillis())
                 .setType(ApplicationSettings.getCIServerType())
                 .setUrl(applicationSettings.getConfig().getGitlabLocation())
-                .setVersion(pluginVersion);
+                .setVersion(Application.class.getPackage().getImplementationVersion());
     }
 
     @Override
