@@ -8,6 +8,7 @@ import com.hp.octane.integrations.dto.general.CIPluginInfo;
 import com.hp.octane.integrations.dto.general.CIServerInfo;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.hp.octane.integrations.dto.tests.*;
+import com.hp.octane.integrations.exceptions.PermissionException;
 import com.hp.octane.integrations.spi.CIPluginServicesBase;
 import com.hp.octane.integrations.util.CIPluginSDKUtils;
 import com.microfocus.octane.gitlab.app.Application;
@@ -160,7 +161,7 @@ public class OctaneServices extends CIPluginServicesBase {
             }
             return result;
         } catch (Exception e) {
-            log.debug("Failed to return the proxy configuration, using null as default.", e);
+            log.warn("Failed to return the proxy configuration, using null as default.", e);
             return null;
         }
     }
@@ -169,9 +170,13 @@ public class OctaneServices extends CIPluginServicesBase {
     @Override
     public CIJobsList getJobsList(boolean includeParameters) {
         try {
-            return gitlabServices.getJobList();
+            CIJobsList jobList = gitlabServices.getJobList();
+            if(jobList.getJobs().length < 1) {
+                log.warn("IMPORTANT: The integration user has no project member permissions");
+            }
+            return jobList;
         } catch (Exception e) {
-            log.debug("Failed to return the job list, using null as default.", e);
+            log.warn("Failed to return the job list, using null as default.", e);
             return null;
         }
     }
@@ -181,7 +186,7 @@ public class OctaneServices extends CIPluginServicesBase {
         try {
             return gitlabServices.createStructure(rootJobCiId);
         } catch (Exception e) {
-            log.debug("Failed to return the pipeline, using null as default.", e);
+            log.warn("Failed to return the pipeline, using null as default.", e);
             return null;
         }
     }
@@ -205,7 +210,8 @@ public class OctaneServices extends CIPluginServicesBase {
             Project project = gitLabApi.getProjectApi().getProject(buildIdParts[0].split(":")[1], buildIdParts[1]);
             gitLabApi.getPipelineApi().createPipeline(project.getId(), buildIdParts[2]);
         } catch (GitLabApiException e) {
-            log.debug("Failed to start a pipeline", e);
+            log.error("Failed to start a pipeline", e);
+            throw new PermissionException(403);
         }
     }
 
@@ -228,7 +234,7 @@ public class OctaneServices extends CIPluginServicesBase {
                         .setTestRuns(tests);
             }
         } catch (Exception e) {
-            log.debug("Failed to return test results", e);
+            log.warn("Failed to return test results", e);
         }
 
         return result;
@@ -263,12 +269,12 @@ public class OctaneServices extends CIPluginServicesBase {
                                 break;
                         }
                     } catch (Exception e) {
-                        log.debug("Failed to create a test result list based on the job artifact: " + artifact.getKey(), e);
+                        log.error("Failed to create a test result list based on the job artifact: " + artifact.getKey(), e);
                     }
                 }
             }
         } catch (Exception e) {
-            log.debug("Failed to create a test list based on the job artifacts", e);
+            log.error("Failed to create a test list based on the job artifacts", e);
         }
         return result;
     }
@@ -303,7 +309,7 @@ public class OctaneServices extends CIPluginServicesBase {
             }
             return result;
         } catch (IOException e) {
-            log.debug("Failed to extract the real artifacts, using null as default.", e);
+            log.warn("Failed to extract the real artifacts, using null as default.", e);
             return null;
         }
     }
