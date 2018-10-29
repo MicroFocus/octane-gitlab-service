@@ -1,7 +1,7 @@
 # octane-gitlab-service
 
 ## Usage
-- Download the octane-gitlab-service-*.jar file from the release assets and copy it to the target directory.
+- Download the octane-gitlab-service-\<version\>.jar file from the release assets and copy it to the target directory.
 -	Create a “CI/CD Integration” API access in Octane.
 -	Create a personal access token for a particular user in GitLab.
 -	In the target directory create a new application.properties file, populate it with the following properties and modify the placeholders with the appropriate values.
@@ -50,7 +50,7 @@ java –jar octane-gitlab-service-<version>.jar
 
 ## Password encryption
 
-All the sensitive tokens in the *'application.properties'* file can be encrypted. For encrypting a sensitive token, run the following command line:
+Values of the properties marked as 'sensitive' in the above list can be encrypted before writing them down in the *'application.properties'* file. For encrypting a sensitive token, run the following command line:
 
 ```bash
 java –jar octane-gitlab-service-<version>.jar encrypt <sensitive_token>
