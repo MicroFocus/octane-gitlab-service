@@ -85,7 +85,6 @@ public class OctaneServices extends CIPluginServicesBase {
 
     @Override
     public CIServerInfo getServerInfo() {
-        System.out.println("**************************************** " + Application.class.getPackage().getImplementationVersion());
         return dtoFactory.newDTO(CIServerInfo.class)
                 .setInstanceId(applicationSettings.getConfig().getCiServerIdentity())
                 .setSendingTime(System.currentTimeMillis())
@@ -242,25 +241,29 @@ public class OctaneServices extends CIPluginServicesBase {
                 List<Pair<String, ByteArrayInputStream>> artifacts = extractArtifacts(gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
                 JAXBContext jaxbContext = JAXBContext.newInstance(Testsuites.class);
                 for (Pair<String, ByteArrayInputStream> artifact : artifacts) {
-                    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-                    DocumentBuilder db = dbf.newDocumentBuilder();
-                    Document doc = db.parse(new InputSource(artifact.getValue()));
-                    String rootTagName = doc.getDocumentElement().getTagName().toLowerCase();
-                    artifact.getValue().reset();
-                    switch (rootTagName) {
-                        case "testsuites":
-                        case "testsuite":
-                            unmarshallAndAddToResults(result, jaxbContext, artifact.getValue());
-                            break;
-                        case "test-run":
-                        case "test-results":
-                            ByteArrayOutputStream os = new ByteArrayOutputStream();
-                            nunitTransformer.transform(new StreamSource(artifact.getValue()), new StreamResult(os));
-                            unmarshallAndAddToResults(result, jaxbContext, new ByteArrayInputStream(os.toByteArray()));
-                            break;
-                        default:
-                            log.error(String.format("Artifact %s: unknown test result format that starts with the <%s> tag", artifact.getKey(), rootTagName));
-                            break;
+                    try {
+                        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+                        DocumentBuilder db = dbf.newDocumentBuilder();
+                        Document doc = db.parse(new InputSource(artifact.getValue()));
+                        String rootTagName = doc.getDocumentElement().getTagName().toLowerCase();
+                        artifact.getValue().reset();
+                        switch (rootTagName) {
+                            case "testsuites":
+                            case "testsuite":
+                                unmarshallAndAddToResults(result, jaxbContext, artifact.getValue());
+                                break;
+                            case "test-run":
+                            case "test-results":
+                                ByteArrayOutputStream os = new ByteArrayOutputStream();
+                                nunitTransformer.transform(new StreamSource(artifact.getValue()), new StreamResult(os));
+                                unmarshallAndAddToResults(result, jaxbContext, new ByteArrayInputStream(os.toByteArray()));
+                                break;
+                            default:
+                                log.error(String.format("Artifact %s: unknown test result format that starts with the <%s> tag", artifact.getKey(), rootTagName));
+                                break;
+                        }
+                    } catch (Exception e) {
+                        log.debug("Failed to create a test result list based on the job artifact: " + artifact.getKey(), e);
                     }
                 }
             }

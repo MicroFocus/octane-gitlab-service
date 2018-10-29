@@ -60,9 +60,8 @@ public class GitLabApiWrapper {
         gitLabApi = new GitLabApi(config.getGitlabLocation(), gitlabPersonalAccessToken, null, proxyConfig);
         try {
             gitLabApi.getProjectApi().getProjects();
-        } catch(GitLabApiException e) {
-            ConfigurationException w = new ConfigurationException("GitLab API failed to perform basic operations. Please validate GitLab properties - location, personalAccessToken(including token permissions/scopes in GitLab server)");
-            throw w;
+        } catch (GitLabApiException e) {
+            throw new ConfigurationException("GitLab API failed to perform basic operations. Please validate GitLab properties - location, personalAccessToken(including token permissions/scopes in GitLab server)");
         }
     }
 

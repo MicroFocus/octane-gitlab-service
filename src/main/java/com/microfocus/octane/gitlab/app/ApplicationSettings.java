@@ -21,7 +21,8 @@ public class ApplicationSettings {
     }
 
     public static String getPluginVersion() {
-        return Application.class.getPackage().getImplementationVersion();
+        String version = Application.class.getPackage().getImplementationVersion();
+        return version != null ? version : "0.0.0.0";
     }
 
     public ConfigStructure getConfig() {
