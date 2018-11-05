@@ -221,17 +221,17 @@ public class OctaneServices extends CIPluginServicesBase {
         try {
             Project project = gitLabApi.getProjectApi().getProject(Integer.parseInt(projectId));
             Job job = gitLabApi.getJobApi().getJob(Integer.parseInt(projectId), Integer.parseInt(buildNumber));
+            String jobFullName = project.getNamespace().getName() + "/" + project.getName() + "/" + job.getName();
+            BuildContext buildContext = dtoFactory.newDTO(BuildContext.class)
+                    .setJobId(jobFullName)
+                    .setJobName(jobFullName)
+                    .setBuildId(job.getId().toString())
+                    .setBuildName(job.getId().toString())
+                    .setServerId(applicationSettings.getConfig().getCiServerIdentity());
+            result = result.setBuildContext(buildContext);
             List<TestRun> tests = createTestList(Integer.parseInt(projectId), job);
             if (tests != null && !tests.isEmpty()) {
-                String jobFullName = project.getNamespace().getName() + "/" + project.getName() + "/" + job.getName();
-                BuildContext buildContext = dtoFactory.newDTO(BuildContext.class)
-                        .setJobId(jobFullName)
-                        .setJobName(jobFullName)
-                        .setBuildId(job.getId().toString())
-                        .setBuildName(job.getId().toString())
-                        .setServerId(applicationSettings.getConfig().getCiServerIdentity());
-                result.setBuildContext(buildContext)
-                        .setTestRuns(tests);
+                result.setTestRuns(tests);
             }
         } catch (Exception e) {
             log.warn("Failed to return test results", e);
