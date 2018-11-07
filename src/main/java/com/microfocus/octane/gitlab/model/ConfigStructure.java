@@ -17,6 +17,8 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
@@ -92,7 +94,12 @@ public class ConfigStructure {
         if (!sharedspace.isPresent()) {
             validationErrors.add("Missing 'p' query parameter in octane.location");
         } else {
-            octaneSharedspace = sharedspace.get().getValue();
+            Matcher matcher = Pattern.compile("^\\d+").matcher(sharedspace.get().getValue());
+            if(matcher.find()) {
+                octaneSharedspace = matcher.group();
+            } else {
+                validationErrors.add("Value of the 'p' query parameter must start with an integer");
+            }
         }
 
         int contextPos = octaneLocation.indexOf("/ui");
