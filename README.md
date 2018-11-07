@@ -56,8 +56,18 @@ java –jar octane-gitlab-service-<version>.jar
 ### Properties information:
 
 #### server.port
+The TCP port for this service to listen on.
+
+#### server.baseUrl
+The base URL of this service, should be accessible by GitLab.
+
+Example:
+
+    http://myServiceServer.myCompany.com:9091
 
 #### ciserver.identity
+The identity of the GitLab server in the ALM Octane server, by default a hash value generated from the serice URL is used.
+Overriding this property is useful for preserving the CI server identity while migrating GitLab to another location.
 
 #### octane.location
 The URL of the ALM Octane server, using its fully qualified domain name (FQDN).
