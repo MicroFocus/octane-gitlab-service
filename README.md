@@ -66,7 +66,7 @@ Example:
     http://myServiceServer.myCompany.com:9091
 
 #### ciserver.identity
-The identity of the GitLab server in the ALM Octane server, by default a hash value generated from the serice URL is used.
+The identity of the GitLab server in the ALM Octane server, by default a hash value generated from the service URL is used.
 Overriding this property is useful for preserving the CI server identity while migrating GitLab to another location.
 
 #### octane.location
