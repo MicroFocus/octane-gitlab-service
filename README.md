@@ -27,7 +27,7 @@ server.port=9091
 # Octane GitLab Service oriented properties
 # =========================================
 server.baseUrl=<mandatory: the base URL of this service, should be accessible by GitLab>
-#ciserver.identity=<optional: CI server identity, by default a hash value generated from the serice URL is used>
+#ciserver.identity=<optional: CI server identity, by default a hash value generated from the service URL is used>
 octane.location=<mandatory: the URL of the Octane server with the /ui path and the sharedspace parameters. Example: https://myserver:8080/ui?p=1005>
 octane.apiClientID=<mandatory: Octane API client ID with CI/CD integration role over the target workspace(s)>
 octane.apiClientSecret=<sensitive,mandatory: Octane API client secret>
@@ -66,7 +66,7 @@ Example:
     http://myServiceServer.myCompany.com:9091
 
 #### ciserver.identity
-The identity of the GitLab server in the ALM Octane server, by default a hash value generated from the serice URL is used.
+The identity of the GitLab server in the ALM Octane server, by default a hash value generated from the service URL is used.
 Overriding this property is useful for preserving the CI server identity while migrating GitLab to another location.
 
 #### octane.location
