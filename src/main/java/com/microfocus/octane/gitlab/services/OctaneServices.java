@@ -232,6 +232,8 @@ public class OctaneServices extends CIPluginServicesBase {
             List<TestRun> tests = createTestList(Integer.parseInt(projectId), job);
             if (tests != null && !tests.isEmpty()) {
                 result.setTestRuns(tests);
+            } else {
+                log.warn(String.format("Unable to extract test results from files defined by the %s pattern. Check the pattern correctness"));
             }
         } catch (Exception e) {
             log.warn("Failed to return test results", e);
@@ -240,7 +242,7 @@ public class OctaneServices extends CIPluginServicesBase {
         return result;
     }
 
-    private List<TestRun> createTestList(Integer projectId, Job job) {
+    public List<TestRun> createTestList(Integer projectId, Job job) {
         List<TestRun> result = new ArrayList<>();
         try {
             if (job.getArtifactsFile() != null) {

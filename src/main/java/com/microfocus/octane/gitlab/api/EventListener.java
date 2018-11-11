@@ -10,7 +10,10 @@ import com.hp.octane.integrations.dto.events.CIEventType;
 import com.hp.octane.integrations.dto.events.PhaseType;
 import com.hp.octane.integrations.dto.scm.*;
 import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
+import com.hp.octane.integrations.dto.tests.TestRun;
+import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
+import com.microfocus.octane.gitlab.services.OctaneServices;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
@@ -38,10 +41,14 @@ public class EventListener {
     private static final Logger log = LogManager.getLogger(EventListener.class);
     private static final DTOFactory dtoFactory = DTOFactory.getInstance();
     private final GitLabApi gitLabApi;
+    private final OctaneServices octaneServices;
+    private final ApplicationSettings applicationSettings;
 
     @Autowired
-    public EventListener(GitLabApiWrapper gitLabApiWrapper) {
+    public EventListener(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper, OctaneServices octaneServices) {
+        this.applicationSettings = applicationSettings;
         this.gitLabApi = gitLabApiWrapper.getGitLabApi();
+        this.octaneServices = octaneServices;
     }
 
     @POST
@@ -49,15 +56,15 @@ public class EventListener {
     @Consumes("application/json")
     public Response index(String msg) {
         JSONObject obj = new JSONObject(msg);
-        handleEvent(obj);
-        return Response.status(200).build();
+        return handleEvent(obj);
     }
 
-    private void handleEvent(JSONObject obj) {
+    private Response handleEvent(JSONObject obj) {
         log.traceEntry();
         try {
             CIEventType eventType = getEventType(obj);
-            if (eventType == CIEventType.UNDEFINED || eventType == CIEventType.QUEUED) return;
+            if (eventType == CIEventType.UNDEFINED || eventType == CIEventType.QUEUED) return Response.ok().build();
+            ;
             List<CIEvent> eventList = getCIEvents(obj);
             eventList.forEach(event -> {
                 if (event.getResult() == null) {
@@ -75,8 +82,19 @@ public class EventListener {
                 if (!isPipelineEvent(obj)) {
                     Integer jobId = getObjectId(obj);
                     Job job = gitLabApi.getJobApi().getJob(projectId, jobId);
-                    if (job.getArtifactsFile() != null) {
-                        OctaneSDK.getInstance().getTestsService().enqueuePushTestsResult(projectId.toString(), jobId.toString());
+                    final String gitlabTestResultsFilePattern = applicationSettings.getConfig().getGitlabTestResultsFilePattern();
+                    if (gitlabTestResultsFilePattern != null && !gitlabTestResultsFilePattern.isEmpty()) {
+                        if (job.getArtifactsFile() != null) {
+                            List<TestRun> testResults = octaneServices.createTestList(projectId, job);
+                            if (testResults != null && testResults.size() > 0) {
+                                OctaneSDK.getInstance().getTestsService().enqueuePushTestsResult(projectId.toString(), jobId.toString());
+                            } else {
+                                String warning = String.format("No test results found by using the %s pattern",
+                                        applicationSettings.getConfig().getGitlabTestResultsFilePattern());
+                                log.warn(warning);
+                                return Response.ok().entity(warning).build();
+                            }
+                        }
                     }
                 }
             }
@@ -84,6 +102,7 @@ public class EventListener {
             log.warn("An error occurred while handling GitLab event", e);
         }
         log.traceExit();
+        return Response.ok().build();
     }
 
     private List<CIEvent> getCIEvents(JSONObject obj) {
