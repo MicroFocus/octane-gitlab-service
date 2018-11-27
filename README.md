@@ -48,7 +48,7 @@ For complete documentation of the applicable patterns see https://docs.oracle.co
 #https.proxyPassword=<sensitive,optional: https proxy password>
 #https.nonProxyHosts=<optional: comma separated list of hosts to access without the https proxy>
 ```
-6	From a command line prompt open on the target directory, run the command line below:
+6. From a command line prompt open on the target directory, run the command line below:
 ```bash
 java –jar octane-gitlab-service-<version>.jar
 ```
