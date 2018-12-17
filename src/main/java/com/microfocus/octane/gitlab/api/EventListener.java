@@ -25,10 +25,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -38,6 +35,7 @@ import java.util.*;
 @Component
 @Path("/events")
 public class EventListener {
+    public static final String LISTENING = "Listening to GitLab events!!!";
     private static final Logger log = LogManager.getLogger(EventListener.class);
     private static final DTOFactory dtoFactory = DTOFactory.getInstance();
     private final GitLabApi gitLabApi;
@@ -59,12 +57,17 @@ public class EventListener {
         return handleEvent(obj);
     }
 
+    @GET
+    @Produces("application/json")
+    public Response validate() {
+        return Response.ok().entity(LISTENING).build();
+    }
+
     private Response handleEvent(JSONObject obj) {
         log.traceEntry();
         try {
             CIEventType eventType = getEventType(obj);
             if (eventType == CIEventType.UNDEFINED || eventType == CIEventType.QUEUED) return Response.ok().build();
-            ;
             List<CIEvent> eventList = getCIEvents(obj);
             eventList.forEach(event -> {
                 if (event.getResult() == null) {

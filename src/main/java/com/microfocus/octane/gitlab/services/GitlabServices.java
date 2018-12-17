@@ -5,6 +5,11 @@ import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
@@ -14,7 +19,9 @@ import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectHook;
 import org.gitlab4j.api.models.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Scope;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -66,6 +73,33 @@ public class GitlabServices {
             }
         } catch (GitLabApiException e) {
             log.warn("Failed to create GitLab web hooks", e);
+        }
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    private void validateEventsAPIAvailability() throws MalformedURLException {
+        URL serverBaseUrl = new URL(applicationSettings.getConfig().getServerBaseUrl());
+        URL webhookListenerUrl = new URL(serverBaseUrl, "events");
+        final String warning = String.format("Error while accessing the '%s' endpoint. Note that this endpoint must be accessible by GitLab.", webhookListenerUrl.toString());
+        try {
+            CloseableHttpClient httpclient = HttpClients.createSystem();
+            HttpGet httpGet = new HttpGet(webhookListenerUrl.toString());
+            CloseableHttpResponse response = httpclient.execute(httpGet);
+            if(response.getStatusLine().getStatusCode() == 200) {
+                String responseStr = EntityUtils.toString(response.getEntity());
+                if (responseStr.equals(com.microfocus.octane.gitlab.api.EventListener.LISTENING)) {
+                    final String success = String.format("Success while accessing the '%s' endpoint.", webhookListenerUrl.toString());
+                    log.info(success);
+                } else {
+                    log.warn(warning);
+                }
+            } else {
+                log.warn(warning);
+            }
+            response.close();
+            httpclient.close();
+        } catch (Exception e) {
+            log.warn(warning, e);
         }
     }
 
