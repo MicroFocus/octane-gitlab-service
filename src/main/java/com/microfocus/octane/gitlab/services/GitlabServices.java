@@ -25,6 +25,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -46,7 +47,7 @@ public class GitlabServices {
     }
 
     @PostConstruct
-    private void initFactory() throws MalformedURLException {
+    private void init() throws MalformedURLException {
         URL serverBaseUrl = new URL(applicationSettings.getConfig().getServerBaseUrl());
         URL webhookListenerUrl = new URL(serverBaseUrl, "events");
         gitLabApi = gitLabApiWrapper.getGitLabApi();
@@ -54,15 +55,7 @@ public class GitlabServices {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getOwnedProjects();
             for (Project project : projects) {
                 try {
-                    for (ProjectHook hook : gitLabApi.getProjectApi().getHooks(project.getId())) {
-                        if (hook.getUrl().equals(webhookListenerUrl.toString())) {
-                            try {
-                                gitLabApi.getProjectApi().deleteHook(project.getId(), hook.getId());
-                            } catch (GitLabApiException e) {
-                                log.warn("Failed to delete a GitLab web hook", e);
-                            }
-                        }
-                    }
+                    deleteWebHooks(webhookListenerUrl, project);
                     ProjectHook hook = new ProjectHook();
                     hook.setJobEvents(true);
                     hook.setPipelineEvents(true);
@@ -76,6 +69,33 @@ public class GitlabServices {
         }
     }
 
+    @PreDestroy
+    private void stop() {
+        try {
+            log.info("Destroying GitLab webhooks ...");
+            URL serverBaseUrl = new URL(applicationSettings.getConfig().getServerBaseUrl());
+            URL webhookListenerUrl = new URL(serverBaseUrl, "events");
+            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getOwnedProjects();
+            for (Project project : projects) {
+                deleteWebHooks(webhookListenerUrl, project);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to destroy GitLab webhooks", e);
+        }
+    }
+
+    private void deleteWebHooks(URL webhookListenerUrl, Project project) throws GitLabApiException {
+        for (ProjectHook hook : gitLabApi.getProjectApi().getHooks(project.getId())) {
+            if (hook.getUrl().equals(webhookListenerUrl.toString())) {
+                try {
+                    gitLabApi.getProjectApi().deleteHook(project.getId(), hook.getId());
+                } catch (GitLabApiException e) {
+                    log.warn("Failed to delete a GitLab web hook", e);
+                }
+            }
+        }
+    }
+
     @EventListener(ApplicationReadyEvent.class)
     private void validateEventsAPIAvailability() throws MalformedURLException {
         URL serverBaseUrl = new URL(applicationSettings.getConfig().getServerBaseUrl());
@@ -85,7 +105,7 @@ public class GitlabServices {
             CloseableHttpClient httpclient = HttpClients.createSystem();
             HttpGet httpGet = new HttpGet(webhookListenerUrl.toString());
             CloseableHttpResponse response = httpclient.execute(httpGet);
-            if(response.getStatusLine().getStatusCode() == 200) {
+            if (response.getStatusLine().getStatusCode() == 200) {
                 String responseStr = EntityUtils.toString(response.getEntity());
                 if (responseStr.equals(com.microfocus.octane.gitlab.api.EventListener.LISTENING)) {
                     final String success = String.format("Success while accessing the '%s' endpoint.", webhookListenerUrl.toString());
