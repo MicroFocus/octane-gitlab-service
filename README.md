@@ -128,3 +128,42 @@ Encrypted token: AES:oLPF209dEPuL69RUxfG6Wg==:HOsPY6YTUj2OG5aVNtp/xQ==
 
 The encrypted token that starts with 'AES:' can be directly copied (including the 'AES:' prefix) to the *'application.properties'* file.
 However, password encryption is optional. You can enter the password plain values directly.
+
+## Troubleshooting
+
+### GitLab Runner HTTP(S) proxy
+GitLab uses registered runners for running pipelines. Runners are registered as described in this article: https://docs.gitlab.com/runner/register/.
+If a runner communicates with this integration service over a network that requires HTTP(S) proxy settings, an easy way to set the proxy is to add it to the runner’s registration entry.
+
+For example, after registering a runner on a Linux machine, its registration entry resides in the /etc/gitlab-runner/config.toml file. (Tip: If you can’t find this file, run the ‘gitlab-runner list’ shell command – it displays the registration file location as ConfigFile=…). This entry may look as below:
+
+```
+[[runners]]
+  name = "my-runner"
+  url = "http://my-runner.cloudlab.net:30080/"
+  token = "4329809ufewjfewkfjnoeihtrjfoif"
+  executor = "shell"
+  builds_dir = "/workspace"
+  [runners.cache]
+```
+
+In order to set the HTTP(S) proxy, an “environment” row should be added to this entry (replace the URL placeholders with the correct values):
+
+```
+[[runners]]
+  name = "my-runner"
+  url = "http://gitlab-placeholder.net:30080/"
+  token = "4329809ufewjfewkfjnoeihtrjfoif"
+  executor = "shell"
+  builds_dir = "/workspace"
+  environment = ["HTTPS_PROXY=http://proxy-placeholder.net:8080", "HTTP_PROXY=http://proxy-placeholder.net:8080"]
+  [runners.cache]
+```
+
+After adding the proxy settings, restart the gitlab-runner service.
+
+### Allowing requests to the local network
+If the GitLab server and the octane-gitlab-service app both run on the same network, you need to enable "Allow requests to the local network from hooks and services" as follows:
+- Open the [your_gitlab_service]/admin/application_settings page.
+- In the “Outbound requests” section, check the "Allow requests to the local network from hooks and services" checkbox.
+
