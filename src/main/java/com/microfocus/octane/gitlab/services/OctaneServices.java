@@ -14,12 +14,12 @@ import com.hp.octane.integrations.util.CIPluginSDKUtils;
 import com.microfocus.octane.gitlab.app.Application;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
+import com.microfocus.octane.gitlab.helpers.Pair;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
 import com.microfocus.octane.gitlab.model.junit5.Testsuites;
-import javafx.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
@@ -53,6 +53,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -246,9 +247,9 @@ public class OctaneServices extends CIPluginServicesBase {
         List<TestRun> result = new ArrayList<>();
         try {
             if (job.getArtifactsFile() != null) {
-                List<Pair<String, ByteArrayInputStream>> artifacts = extractArtifacts(gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+                List<Map.Entry<String, ByteArrayInputStream>> artifacts = extractArtifacts(gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
                 JAXBContext jaxbContext = JAXBContext.newInstance(Testsuites.class);
-                for (Pair<String, ByteArrayInputStream> artifact : artifacts) {
+                for (Map.Entry<String, ByteArrayInputStream> artifact : artifacts) {
                     try {
                         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
                         DocumentBuilder db = dbf.newDocumentBuilder();
@@ -290,12 +291,12 @@ public class OctaneServices extends CIPluginServicesBase {
         }
     }
 
-    private List<Pair<String, ByteArrayInputStream>> extractArtifacts(InputStream inputStream) {
+    private List<Map.Entry<String, ByteArrayInputStream>> extractArtifacts(InputStream inputStream) {
         PathMatcher matcher = FileSystems.getDefault()
                 .getPathMatcher(applicationSettings.getConfig().getGitlabTestResultsFilePattern());
         try {
             ZipInputStream zis = new ZipInputStream(inputStream);
-            List<Pair<String, ByteArrayInputStream>> result = new LinkedList<>();
+            List<Map.Entry<String, ByteArrayInputStream>> result = new LinkedList<>();
             for (ZipEntry entry = zis.getNextEntry(); entry != null; entry = zis.getNextEntry()) {
                 if (matcher.matches(Paths.get(entry.getName()))) {
                     while (zis.available() > 0) {
@@ -305,7 +306,7 @@ public class OctaneServices extends CIPluginServicesBase {
                         while ((length = zis.read(buffer)) != -1) {
                             entryStream.write(buffer, 0, length);
                         }
-                        result.add(new Pair<>(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
+                        result.add(Pair.of(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
                     }
                 }
             }
