@@ -164,6 +164,6 @@ After adding the proxy settings, restart the gitlab-runner service.
 
 ### Allowing requests to the local network
 If the GitLab server and the octane-gitlab-service app both run on the same network, you need to enable "Allow requests to the local network from hooks and services" as follows:
-- Open the [your_gitlab_service]/admin/application_settings page.
+- Open the [your_gitlab_server]/admin/application_settings page.
 - In the “Outbound requests” section, check the "Allow requests to the local network from hooks and services" checkbox.
 
