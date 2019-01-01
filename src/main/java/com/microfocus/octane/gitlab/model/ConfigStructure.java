@@ -1,6 +1,6 @@
 package com.microfocus.octane.gitlab.model;
 
-import javafx.util.Pair;
+import com.microfocus.octane.gitlab.helpers.Pair;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -76,12 +76,12 @@ public class ConfigStructure {
 
     @PostConstruct
     public void init() throws URISyntaxException {
-        List<Pair<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
-        mandatoryGetters.add(new Pair<>("octane.location", this::getOctaneLocation));
-        mandatoryGetters.add(new Pair<>("octane.apiClientID", this::getOctaneApiClientID));
-        mandatoryGetters.add(new Pair<>("octane.apiClientSecret", this::getOctaneApiClientSecret));
-        mandatoryGetters.add(new Pair<>("gitlab.location", this::getGitlabLocation));
-        mandatoryGetters.add(new Pair<>("gitlab.personalAccessToken", this::getGitlabPersonalAccessToken));
+        List<Map.Entry<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
+        mandatoryGetters.add(Pair.of("octane.location", this::getOctaneLocation));
+        mandatoryGetters.add(Pair.of("octane.apiClientID", this::getOctaneApiClientID));
+        mandatoryGetters.add(Pair.of("octane.apiClientSecret", this::getOctaneApiClientSecret));
+        mandatoryGetters.add(Pair.of("gitlab.location", this::getGitlabLocation));
+        mandatoryGetters.add(Pair.of("gitlab.personalAccessToken", this::getGitlabPersonalAccessToken));
         Set<String> validationErrors = new LinkedHashSet<>();
         mandatoryGetters.forEach(mg -> {
             if (mg.getValue().get() == null || mg.getValue().get().trim().isEmpty()) {
