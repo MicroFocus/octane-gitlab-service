@@ -129,23 +129,32 @@ public class GitlabServices {
         try {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
-                for (Branch branch : gitLabApi.getRepositoryApi().getBranches(project.getId())) {
-                    String buildId = project.getNamespace().getName() + "/" + project.getName() + "/" + branch.getName();
-                    PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
-                            .setJobCiId("pipeline:" + buildId)
-                            .setName(buildId);
-                    list.add(buildConf);
+                try {
+                    for (Branch branch : gitLabApi.getRepositoryApi().getBranches(project.getId())) {
+                        String buildId = project.getNamespace().getName() + "/" + project.getName() + "/" + branch.getName();
+                        PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
+                                .setJobCiId("pipeline:" + buildId)
+                                .setName(buildId);
+                        list.add(buildConf);
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to add some branches to the job list", e);
                 }
-                for (Tag tag : gitLabApi.getTagsApi().getTags(project.getId())) {
-                    String buildId = project.getNamespace().getName() + "/" + project.getName() + "/" + tag.getName();
-                    PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
-                            .setJobCiId("pipeline:" + buildId)
-                            .setName(buildId);
-                    list.add(buildConf);
+
+                try {
+                    for (Tag tag : gitLabApi.getTagsApi().getTags(project.getId())) {
+                        String buildId = project.getNamespace().getName() + "/" + project.getName() + "/" + tag.getName();
+                        PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
+                                .setJobCiId("pipeline:" + buildId)
+                                .setName(buildId);
+                        list.add(buildConf);
+                    }
+                } catch(Exception e) {
+                    log.warn("Failed to add some tags to the job list", e);
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to add some jobs to the returned list", e);
+            log.warn("Failed to add some jobs to the job list", e);
         }
 
         ciJobsList.setJobs(list.toArray(new PipelineNode[list.size()]));
