@@ -131,7 +131,7 @@ public class GitlabServices {
             for (Project project : projects) {
                 try {
                     for (Branch branch : gitLabApi.getRepositoryApi().getBranches(project.getId())) {
-                        String buildId = project.getNamespace().getName() + "/" + project.getName() + "/" + branch.getName();
+                        String buildId = project.getPathWithNamespace() + "/" + branch.getName();
                         PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
                                 .setJobCiId("pipeline:" + buildId)
                                 .setName(buildId);
@@ -143,7 +143,7 @@ public class GitlabServices {
 
                 try {
                     for (Tag tag : gitLabApi.getTagsApi().getTags(project.getId())) {
-                        String buildId = project.getNamespace().getName() + "/" + project.getName() + "/" + tag.getName();
+                        String buildId = project.getPathWithNamespace() + "/" + tag.getName();
                         PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
                                 .setJobCiId("pipeline:" + buildId)
                                 .setName(buildId);
