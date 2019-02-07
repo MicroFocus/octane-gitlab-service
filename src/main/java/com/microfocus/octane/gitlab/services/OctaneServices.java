@@ -252,6 +252,8 @@ public class OctaneServices extends CIPluginServicesBase {
                 for (Map.Entry<String, ByteArrayInputStream> artifact : artifacts) {
                     try {
                         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+                        dbf.setFeature("http://xml.org/sax/features/external-general-entities",false);
+                        dbf.setFeature("http://xml.org/sax/features/external-parameter-entities",false);
                         DocumentBuilder db = dbf.newDocumentBuilder();
                         Document doc = db.parse(new InputSource(artifact.getValue()));
                         String rootTagName = doc.getDocumentElement().getTagName().toLowerCase();
