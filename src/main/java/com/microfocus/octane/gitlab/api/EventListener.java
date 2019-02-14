@@ -233,8 +233,11 @@ public class EventListener {
     private String getProjectFullPath(JSONObject obj) {
         try {
             if (isPipelineEvent(obj)) {
-                return obj.getJSONObject("project").getString("namespace") + "/" + obj.getJSONObject("project").getString("name");
+                return new URL(obj.getJSONObject("project").getString("web_url")).getPath().substring(1);
             }
+
+            // I couldn't find any other suitable property rather then repository.homepage.
+            // But this one may potentially cause a defect with external repos.
             return new URL(obj.getJSONObject("repository").getString("homepage")).getPath().substring(1);
         } catch (MalformedURLException e) {
             log.warn("Failed to return the project full path, using an empty string as default", e);
