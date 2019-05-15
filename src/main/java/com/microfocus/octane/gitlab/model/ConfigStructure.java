@@ -120,8 +120,12 @@ public class ConfigStructure {
     }
 
     public String getCiServerIdentity() {
-        String val = ciServerIdentity != null ? ciServerIdentity : Hex.encodeHexString(DigestUtils.md5Digest(serverBaseUrl.getBytes()));
+        String val = !isNullOrSpaceOrEmpty(ciServerIdentity) ? ciServerIdentity : Hex.encodeHexString(DigestUtils.md5Digest(serverBaseUrl.getBytes()));
         return val.substring(0, Math.min(255, val.length()));
+    }
+
+    private boolean isNullOrSpaceOrEmpty(String str) {
+        return str == null || str.trim().isEmpty();
     }
 
     public String getOctaneLocation() {
