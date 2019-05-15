@@ -335,7 +335,7 @@ public class OctaneServices extends CIPluginServicesBase {
                 .setClassName(tc.getClassname())
                 .setTestName(tc.getName())
                 .setResult(testResultStatus)
-                .setDuration(Double.valueOf(tc.getTime()).longValue() * 1000);
+                .setDuration(tc.getTime() != null ? Double.valueOf(tc.getTime()).longValue() * 1000 : 1);
         if (tc.getError() != null && tc.getError().size() > 0) {
             TestRunError error = dtoFactory.newDTO(TestRunError.class);
             error.setErrorMessage(tc.getError().get(0).getMessage());
