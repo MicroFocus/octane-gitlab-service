@@ -207,12 +207,15 @@ public class OctaneServices extends CIPluginServicesBase {
     @Override
     public void runPipeline(String jobCiId, String originalBody) {
         try {
-            String[] buildIdParts = jobCiId.split(Pattern.quote("/"));
-            Project project = gitLabApi.getProjectApi().getProject(buildIdParts[0].split(":")[1], buildIdParts[1]);
-            gitLabApi.getPipelineApi().createPipeline(project.getId(), buildIdParts[2]);
+            jobCiId = jobCiId.substring(jobCiId.indexOf(':') + 1);
+            int lastSlashIndex = jobCiId.lastIndexOf('/');
+            String projectPath = jobCiId.substring(0, lastSlashIndex);
+            String branch = jobCiId.substring(lastSlashIndex + 1);
+            Project project = gitLabApi.getProjectApi().getProject(projectPath);
+            gitLabApi.getPipelineApi().createPipeline(project.getId(), branch);
         } catch (GitLabApiException e) {
             log.error("Failed to start a pipeline", e);
-            throw new PermissionException(403);
+            throw new RuntimeException(e);
         }
     }
 
