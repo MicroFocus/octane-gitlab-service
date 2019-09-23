@@ -16,6 +16,7 @@ import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.Pair;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
+import com.microfocus.octane.gitlab.helpers.ProxyHelper;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
@@ -141,7 +142,7 @@ public class OctaneServices extends CIPluginServicesBase {
     public CIProxyConfiguration getProxyConfiguration(URL targetUrl) {
         try {
             CIProxyConfiguration result = null;
-            if (isProxyNeeded(targetUrl)) {
+            if (ProxyHelper.isProxyNeeded(applicationSettings, targetUrl)) {
                 ConfigStructure config = applicationSettings.getConfig();
                 log.info("proxy is required for host " + targetUrl);
                 String protocol = targetUrl.getProtocol();
@@ -355,16 +356,4 @@ public class OctaneServices extends CIPluginServicesBase {
         result.add(tr);
     }
 
-    private boolean isProxyNeeded(URL targetHost) {
-        if (targetHost == null) return false;
-        boolean result = false;
-        ConfigStructure config = applicationSettings.getConfig();
-        if (config.getProxyField(targetHost.getProtocol(), "proxyUrl") != null) {
-            String nonProxyHostsStr = config.getProxyField(targetHost.getProtocol(), "nonProxyHosts");
-            if (!CIPluginSDKUtils.isNonProxyHost(targetHost.getHost(), nonProxyHostsStr)) {
-                result = true;
-            }
-        }
-        return result;
-    }
 }
