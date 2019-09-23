@@ -8,7 +8,6 @@ import com.hp.octane.integrations.dto.general.CIPluginInfo;
 import com.hp.octane.integrations.dto.general.CIServerInfo;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.hp.octane.integrations.dto.tests.*;
-import com.hp.octane.integrations.exceptions.PermissionException;
 import com.hp.octane.integrations.spi.CIPluginServicesBase;
 import com.hp.octane.integrations.util.CIPluginSDKUtils;
 import com.microfocus.octane.gitlab.app.Application;
@@ -16,6 +15,7 @@ import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.Pair;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
+import com.microfocus.octane.gitlab.helpers.StreamHelper;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
@@ -44,19 +44,22 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.zip.ZipFile;
 
 import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.PREFIX;
 import static hudson.plugins.nunit.NUnitReportTransformer.NUNIT_TO_JUNIT_XSLFILE_STR;
@@ -299,26 +302,44 @@ public class OctaneServices extends CIPluginServicesBase {
     private List<Map.Entry<String, ByteArrayInputStream>> extractArtifacts(InputStream inputStream) {
         PathMatcher matcher = FileSystems.getDefault()
                 .getPathMatcher(applicationSettings.getConfig().getGitlabTestResultsFilePattern());
+        File tempFile = null;
+
         try {
-            ZipInputStream zis = new ZipInputStream(inputStream);
+            tempFile = File.createTempFile("gitlab-artifact", ".zip");
+
+            try (OutputStream os = new FileOutputStream(tempFile)) {
+                StreamHelper.copyStream(inputStream, os);
+            }
+
+            inputStream.close();
+
+            ZipFile zipFile = new ZipFile(tempFile);
+
             List<Map.Entry<String, ByteArrayInputStream>> result = new LinkedList<>();
-            for (ZipEntry entry = zis.getNextEntry(); entry != null; entry = zis.getNextEntry()) {
+
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+
                 if (matcher.matches(Paths.get(entry.getName()))) {
-                    while (zis.available() > 0) {
-                        ByteArrayOutputStream entryStream = new ByteArrayOutputStream();
-                        byte[] buffer = new byte[1024];
-                        int length;
-                        while ((length = zis.read(buffer)) != -1) {
-                            entryStream.write(buffer, 0, length);
-                        }
-                        result.add(Pair.of(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
+                    ByteArrayOutputStream entryStream = new ByteArrayOutputStream();
+
+                    try (InputStream zipEntryStream = zipFile.getInputStream(entry)) {
+                        StreamHelper.copyStream(zipEntryStream, entryStream);
                     }
+
+                    result.add(Pair.of(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
                 }
             }
             return result;
         } catch (IOException e) {
             log.warn("Failed to extract the real artifacts, using null as default.", e);
             return null;
+        } finally {
+            if (tempFile != null) {
+                tempFile.delete();
+            }
         }
     }
 
