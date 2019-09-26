@@ -1,8 +1,8 @@
 package com.microfocus.octane.gitlab.app;
 
 import com.hp.octane.integrations.OctaneSDK;
-import com.hp.octane.integrations.spi.CIPluginServices;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
+import com.microfocus.octane.gitlab.services.OctaneServices;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -30,8 +30,11 @@ public class Application {
             }
         }
         ConfigurableApplicationContext context = SpringApplication.run(Application.class, args);
-        CIPluginServices pluginServices = context.getBean("octaneServices", CIPluginServices.class);
-        OctaneSDK.init(pluginServices);
+        OctaneServices octaneServices = context.getBean("octaneServices", OctaneServices.class);
+        try {
+            OctaneSDK.addClient(octaneServices.getOctaneConfiguration(), OctaneServices.class);
+        } catch (Throwable r) {
+            int t = 5;
+        }
     }
-
 }
