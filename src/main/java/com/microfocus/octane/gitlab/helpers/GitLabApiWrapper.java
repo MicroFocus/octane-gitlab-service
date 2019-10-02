@@ -1,6 +1,6 @@
 package com.microfocus.octane.gitlab.helpers;
 
-import com.hp.octane.integrations.util.CIPluginSDKUtils;
+import com.hp.octane.integrations.utils.CIPluginSDKUtils;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import org.gitlab4j.api.GitLabApi;

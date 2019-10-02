@@ -21,6 +21,7 @@ import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.CompareResults;
 import org.gitlab4j.api.models.Diff;
 import org.gitlab4j.api.models.Job;
+import org.gitlab4j.api.models.Project;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -78,10 +79,11 @@ public class EventListener {
                 } catch (Exception e) {
                     log.debug("Failed to trace an incoming event", e);
                 }
-                OctaneSDK.getInstance().getEventsService().publishEvent(event);
+                OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(event));
             });
             if (eventType == CIEventType.FINISHED) {
                 Integer projectId = isPipelineEvent(obj) ? obj.getJSONObject("project").getInt("id") : obj.getInt("project_id");
+                Project project = gitLabApi.getProjectApi().getProject(projectId);
                 if (!isPipelineEvent(obj)) {
                     Integer jobId = getObjectId(obj);
                     Job job = gitLabApi.getJobApi().getJob(projectId, jobId);
@@ -90,7 +92,8 @@ public class EventListener {
                         if (job.getArtifactsFile() != null) {
                             List<TestRun> testResults = octaneServices.createTestList(projectId, job);
                             if (testResults != null && testResults.size() > 0) {
-                                OctaneSDK.getInstance().getTestsService().enqueuePushTestsResult(projectId.toString(), jobId.toString());
+                                OctaneSDK.getClients().forEach(client ->
+                                        client.getTestsService().enqueuePushTestsResult(project.getPathWithNamespace()+"/"+job.getName(),jobId.toString()));
                             } else {
                                 String warning = String.format("No test results found by using the %s pattern",
                                         applicationSettings.getConfig().getGitlabTestResultsFilePattern());
