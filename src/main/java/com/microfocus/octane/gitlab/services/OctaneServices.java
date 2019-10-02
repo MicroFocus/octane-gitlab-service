@@ -4,6 +4,7 @@ import com.hp.octane.integrations.CIPluginServices;
 import com.hp.octane.integrations.OctaneConfiguration;
 import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.configuration.CIProxyConfiguration;
+import com.hp.octane.integrations.dto.configuration.OctaneConfiguration;
 import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.general.CIPluginInfo;
 import com.hp.octane.integrations.dto.general.CIServerInfo;
@@ -15,6 +16,7 @@ import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.Pair;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
+import com.microfocus.octane.gitlab.helpers.ProxyHelper;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 
+import javax.annotation.PostConstruct;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.parsers.DocumentBuilder;
@@ -52,6 +55,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -131,7 +135,7 @@ public class OctaneServices extends CIPluginServices {
     public CIProxyConfiguration getProxyConfiguration(URL targetUrl) {
         try {
             CIProxyConfiguration result = null;
-            if (isProxyNeeded(targetUrl)) {
+            if (ProxyHelper.isProxyNeeded(applicationSettings, targetUrl)) {
                 ConfigStructure config = applicationSettings.getConfig();
                 log.info("proxy is required for host " + targetUrl);
                 String protocol = targetUrl.getProtocol();
@@ -343,20 +347,6 @@ public class OctaneServices extends CIPluginServices {
         }
         result.add(tr);
     }
-
-    private boolean isProxyNeeded(URL targetHost) {
-        if (targetHost == null) return false;
-        boolean result = false;
-        ConfigStructure config = applicationSettings.getConfig();
-        if (config.getProxyField(targetHost.getProtocol(), "proxyUrl") != null) {
-            String nonProxyHostsStr = config.getProxyField(targetHost.getProtocol(), "nonProxyHosts");
-            if (!CIPluginSDKUtils.isNonProxyHost(targetHost.getHost(), nonProxyHostsStr)) {
-                result = true;
-            }
-        }
-        return result;
-    }
-
     @Autowired
     public void setApplicationSettings(ApplicationSettings applicationSettings) {
         this.applicationSettings = applicationSettings;
