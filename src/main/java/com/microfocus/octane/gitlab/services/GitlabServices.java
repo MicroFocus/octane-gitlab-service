@@ -1,10 +1,12 @@
 package com.microfocus.octane.gitlab.services;
 
 import com.hp.octane.integrations.dto.DTOFactory;
+import com.hp.octane.integrations.dto.events.MultiBranchType;
 import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
+import com.microfocus.octane.gitlab.helpers.Utils;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -17,7 +19,6 @@ import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectHook;
-import org.gitlab4j.api.models.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Scope;
@@ -130,26 +131,18 @@ public class GitlabServices {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
                 try {
-                    for (Branch branch : gitLabApi.getRepositoryApi().getBranches(project.getId())) {
-                        String buildId = project.getPathWithNamespace() + "/" + branch.getName();
-                        PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                .setJobCiId("pipeline:" + buildId)
-                                .setName(buildId);
-                        list.add(buildConf);
+                    String buildId = project.getPathWithNamespace();
+                    PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
+                            .setJobCiId("pipeline:" + buildId)
+                            .setName(buildId);
+                    if (Utils.isMultiBranch(project.getId(),gitLabApi)) {
+                        buildConf.setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
+                    } else {
+                        List<Branch> branches=   gitLabApi.getRepositoryApi().getBranches(project.getId());
+                        buildConf.setJobCiId(buildConf.getJobCiId()+"/" + branches.get(0).getName());
                     }
+                    list.add(buildConf);
                 } catch (Exception e) {
-                    log.warn("Failed to add some branches to the job list", e);
-                }
-
-                try {
-                    for (Tag tag : gitLabApi.getTagsApi().getTags(project.getId())) {
-                        String buildId = project.getPathWithNamespace() + "/" + tag.getName();
-                        PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                .setJobCiId("pipeline:" + buildId)
-                                .setName(buildId);
-                        list.add(buildConf);
-                    }
-                } catch(Exception e) {
                     log.warn("Failed to add some tags to the job list", e);
                 }
             }
@@ -166,7 +159,17 @@ public class GitlabServices {
     }
 
     PipelineNode createStructure(String buildId) {
-        String displayName = buildId.split("/")[2];
+        String pipelinePath = Utils.cutPipelinePrefix(buildId);
+        try {
+            if (gitLabApi.getRepositoryApi().getBranches(pipelinePath).size() > 1) {
+                return dtoFactory.newDTO(PipelineNode.class)
+                        .setJobCiId(buildId)
+                        .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
+            }
+        } catch (GitLabApiException e) {
+            log.warn("Failed to get branches from " + pipelinePath, e);
+        }
+        String displayName = Utils.getPipelineDisplayName(buildId);
         return dtoFactory.newDTO(PipelineNode.class)
                 .setJobCiId(buildId)
                 .setName(displayName);
