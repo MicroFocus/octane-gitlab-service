@@ -137,9 +137,6 @@ public class GitlabServices {
                             .setName(buildId);
                     if (Utils.isMultiBranch(project.getId(),gitLabApi)) {
                         buildConf.setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
-                    } else {
-                        List<Branch> branches=   gitLabApi.getRepositoryApi().getBranches(project.getId());
-                        buildConf.setJobCiId(buildConf.getJobCiId()+"/" + branches.get(0).getName());
                     }
                     list.add(buildConf);
                 } catch (Exception e) {
@@ -161,17 +158,19 @@ public class GitlabServices {
     PipelineNode createStructure(String buildId) {
         String pipelinePath = Utils.cutPipelinePrefix(buildId);
         try {
-            if (gitLabApi.getRepositoryApi().getBranches(pipelinePath).size() > 1) {
+            List<Branch> branches = gitLabApi.getRepositoryApi().getBranches(pipelinePath);
+            if (branches.size() > 1) {
                 return dtoFactory.newDTO(PipelineNode.class)
                         .setJobCiId(buildId)
                         .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
             }
+            String displayName = Utils.getPipelineDisplayName(buildId);
+            return dtoFactory.newDTO(PipelineNode.class)
+                    .setJobCiId(buildId+"/"+branches.get(0).getName())
+                    .setName(displayName);
         } catch (GitLabApiException e) {
             log.warn("Failed to get branches from " + pipelinePath, e);
         }
-        String displayName = Utils.getPipelineDisplayName(buildId);
-        return dtoFactory.newDTO(PipelineNode.class)
-                .setJobCiId(buildId)
-                .setName(displayName);
+        return null;
     }
 }
