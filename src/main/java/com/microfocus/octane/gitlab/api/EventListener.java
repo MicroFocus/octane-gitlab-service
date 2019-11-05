@@ -88,16 +88,15 @@ public class EventListener {
                         event.setProjectDisplayName(Utils.cutPipelinePrefix(event.getProject()));
                         event.setParentCiId("pipeline:" + s).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD);
                     }
-                }
-                if (eventType == CIEventType.DELETED) {
+                } else if (eventType == CIEventType.DELETED) {
                     OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(event));
                 }
                 OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(event));
             });
             if (eventType == CIEventType.FINISHED) {
                 Integer projectId = isPipelineEvent(obj) ? obj.getJSONObject("project").getInt("id") : obj.getInt("project_id");
-                Project project = gitLabApi.getProjectApi().getProject(projectId);
                 if (!isPipelineEvent(obj)) {
+                    Project project = gitLabApi.getProjectApi().getProject(projectId);
                     Integer jobId = getObjectId(obj);
                     Job job = gitLabApi.getJobApi().getJob(projectId, jobId);
                     final String gitlabTestResultsFilePattern = applicationSettings.getConfig().getGitlabTestResultsFilePattern();
@@ -201,18 +200,22 @@ public class EventListener {
         return isDeleteBranchEvent(obj) ? obj.getString("user_name") : obj.getJSONObject("user").getString("name");
     }
 
+
     private CIEventCauseType convertCiEventCauseType(JSONObject obj, boolean isScmNull) {
-        if (isScmNull) {
-            String pipelineSchedule = null;
-            try {
-                pipelineSchedule = isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString("pipeline_schedule") : null;
-            } catch (Exception e) {
-                log.warn("Failed to infer event cause type, using 'USER' as default");
-            }
-            if (pipelineSchedule != null && pipelineSchedule.equals("true")) return CIEventCauseType.TIMER;
+        if (isDeleteBranchEvent(obj)) {
             return CIEventCauseType.USER;
         }
-        return CIEventCauseType.SCM;
+        if (!isScmNull) {
+            return CIEventCauseType.SCM;
+        }
+        String pipelineSchedule = null;
+        try {
+            pipelineSchedule = isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString("pipeline_schedule") : null;
+        } catch (Exception e) {
+            log.warn("Failed to infer event cause type, using 'USER' as default");
+        }
+        if (pipelineSchedule != null && pipelineSchedule.equals("true")) return CIEventCauseType.TIMER;
+        return CIEventCauseType.USER;
     }
 
     private CIBuildResult convertCiBuildResult(String status) {
@@ -230,7 +233,7 @@ public class EventListener {
         } else if (isDeleteBranchEvent(obj)) {
             return "delete";
         } else if (obj.getString("object_kind").equals("push")) {//push that not delete branch
-            return "";
+            return "undefined";
         } else {
             return obj.getString("build_status");
         }
