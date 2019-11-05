@@ -15,6 +15,7 @@ import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.Pair;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
 import com.microfocus.octane.gitlab.helpers.ProxyHelper;
+import com.microfocus.octane.gitlab.helpers.Utils;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
@@ -197,11 +198,9 @@ public class OctaneServices extends CIPluginServices {
     @Override
     public void runPipeline(String jobCiId, String originalBody) {
         try {
-            jobCiId = jobCiId.substring(jobCiId.indexOf(':') + 1);
-            int lastSlashIndex = jobCiId.lastIndexOf('/');
-            String projectPath = jobCiId.substring(0, lastSlashIndex);
-            String branch = jobCiId.substring(lastSlashIndex + 1);
-            Project project = gitLabApi.getProjectApi().getProject(projectPath);
+            String projectName = Utils.cutPipelinePrefix(jobCiId);
+            String branch = Utils.getLastPartOfPath(projectName);
+            Project project = gitLabApi.getProjectApi().getProject(projectName.substring(0, projectName.lastIndexOf("/")));
             gitLabApi.getPipelineApi().createPipeline(project.getId(), branch);
         } catch (GitLabApiException e) {
             log.error("Failed to start a pipeline", e);
