@@ -11,11 +11,7 @@ import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.hp.octane.integrations.dto.tests.*;
 import com.microfocus.octane.gitlab.app.Application;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
-import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
-import com.microfocus.octane.gitlab.helpers.Pair;
-import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
-import com.microfocus.octane.gitlab.helpers.ProxyHelper;
-import com.microfocus.octane.gitlab.helpers.Utils;
+import com.microfocus.octane.gitlab.helpers.*;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
@@ -25,7 +21,6 @@ import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Job;
-import org.gitlab4j.api.models.Project;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -198,10 +193,8 @@ public class OctaneServices extends CIPluginServices {
     @Override
     public void runPipeline(String jobCiId, String originalBody) {
         try {
-            String projectName = Utils.cutPipelinePrefix(jobCiId);
-            String branch = Utils.getLastPartOfPath(projectName);
-            Project project = gitLabApi.getProjectApi().getProject(projectName.substring(0, projectName.lastIndexOf("/")));
-            gitLabApi.getPipelineApi().createPipeline(project.getId(), branch);
+            ParsedPath parsedPath = new ParsedPath(jobCiId, gitLabApi, PathType.PIPELINE);
+            gitLabApi.getPipelineApi().createPipeline(parsedPath.getFullPathOfProject(), parsedPath.getCurrentBranchOrDefault());
         } catch (GitLabApiException e) {
             log.error("Failed to start a pipeline", e);
             throw new RuntimeException(e);
@@ -212,12 +205,11 @@ public class OctaneServices extends CIPluginServices {
     public InputStream getTestsResult(String jobFullName, String buildNumber) {
         TestsResult result = dtoFactory.newDTO(TestsResult.class);
         try {
-            String projectPath = jobFullName = jobFullName.substring(0, jobFullName.lastIndexOf("/"));
-            Project project = gitLabApi.getProjectApi().getProject(projectPath);
-            Job job = gitLabApi.getJobApi().getJob(project.getId(), Integer.parseInt(buildNumber));
+            ParsedPath project = new ParsedPath(ParsedPath.cutLastPartOfPath(jobFullName), gitLabApi, PathType.PROJECT);
+            Job job = gitLabApi.getJobApi().getJob(project.getFullPathOfProject(), Integer.parseInt(buildNumber));
             BuildContext buildContext = dtoFactory.newDTO(BuildContext.class)
-                    .setJobId(jobFullName)
-                    .setJobName(jobFullName)
+                    .setJobId(project.getFullPathOfProjectWithBranch())
+                    .setJobName(project.getFullPathOfProject())
                     .setBuildId(job.getId().toString())
                     .setBuildName(job.getId().toString())
                     .setServerId(applicationSettings.getConfig().getCiServerIdentity());

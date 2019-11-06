@@ -1,8 +1,11 @@
 package com.microfocus.octane.gitlab.app;
 
 import com.hp.octane.integrations.OctaneSDK;
+import com.microfocus.octane.gitlab.api.EventListener;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
 import com.microfocus.octane.gitlab.services.OctaneServices;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -16,6 +19,7 @@ import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.encrypt;
 @SpringBootApplication
 @ComponentScan("com.microfocus.octane.gitlab")
 public class Application {
+    private static final Logger log = LogManager.getLogger(Application.class);
 
     public static void main(String[] args) throws GeneralSecurityException, IOException {
         if (args.length > 0 && args[0].equals("encrypt")) {
@@ -34,7 +38,7 @@ public class Application {
         try {
             OctaneSDK.addClient(octaneServices.getOctaneConfiguration(), OctaneServices.class);
         } catch (Throwable r) {
-            int t = 5;
+            log.error("Connection to Octane failed. "+ r.getMessage() );
         }
     }
 }
