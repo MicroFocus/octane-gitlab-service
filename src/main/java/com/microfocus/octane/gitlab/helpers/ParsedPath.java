@@ -1,7 +1,6 @@
 package com.microfocus.octane.gitlab.helpers;
 
 
-import com.microfocus.octane.gitlab.services.GitlabServices;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
@@ -11,7 +10,7 @@ import org.gitlab4j.api.models.Project;
 
 import java.util.List;
 
-public class ParsePath {
+public class ParsedPath {
     private Project project;
     private String groups;
     private String displayName;
@@ -19,7 +18,7 @@ public class ParsePath {
     private String currentBranch;
     private int id;
     private GitLabApi gitlabApi;
-    private static final Logger log = LogManager.getLogger(ParsePath.class);
+    private static final Logger log = LogManager.getLogger(ParsedPath.class);
 
     private void init(String path, PathType pathType) {
         switch (pathType) {
@@ -35,12 +34,12 @@ public class ParsePath {
         }
     }
 
-    public ParsePath(String path, GitLabApi gitLabApi, PathType pathType) {
+    public ParsedPath(String path, GitLabApi gitLabApi, PathType pathType) {
         gitlabApi = gitLabApi;
         init(path, pathType);
     }
 
-    public ParsePath(Project project, GitLabApi gitLabApi) {
+    public ParsedPath(Project project, GitLabApi gitLabApi) {
         this.project = project;
         gitlabApi = gitLabApi;
         this.groups = project.getNamespace().getFullPath();

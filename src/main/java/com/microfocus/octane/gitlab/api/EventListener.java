@@ -14,7 +14,7 @@ import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
 import com.hp.octane.integrations.dto.tests.TestRun;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
-import com.microfocus.octane.gitlab.helpers.ParsePath;
+import com.microfocus.octane.gitlab.helpers.ParsedPath;
 import com.microfocus.octane.gitlab.helpers.PathType;
 import com.microfocus.octane.gitlab.services.OctaneServices;
 import org.apache.logging.log4j.LogManager;
@@ -84,10 +84,10 @@ public class EventListener {
                 }
                 if (eventType == CIEventType.FINISHED || eventType == CIEventType.STARTED) {
                     if (event.getProject().contains("pipeline:")) {
-                        ParsePath parsePath = new ParsePath(event.getProject(), gitLabApi, PathType.PIPELINE);
-                        if (parsePath.isMultiBranch()) {
-                            event.setProjectDisplayName(parsePath.getFullPathOfProjectWithBranch());
-                            event.setParentCiId(parsePath.getFullPathOfPipeline()).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD);
+                        ParsedPath parsedPath = new ParsedPath(event.getProject(), gitLabApi, PathType.PIPELINE);
+                        if (parsedPath.isMultiBranch()) {
+                            event.setProjectDisplayName(parsedPath.getFullPathOfProjectWithBranch());
+                            event.setParentCiId(parsedPath.getFullPathOfPipeline()).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD);
                         }
                     }
                 } else if (eventType == CIEventType.DELETED) {
@@ -244,7 +244,7 @@ public class EventListener {
         if (isPipelineEvent(obj)) {
             return obj.getJSONObject("object_attributes").getString("ref");
         } else if (isDeleteBranchEvent(obj)) {
-            return ParsePath.getLastPartOfPath(obj.getString("ref"));
+            return ParsedPath.getLastPartOfPath(obj.getString("ref"));
         } else {
             return obj.getString("build_name");
         }

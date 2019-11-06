@@ -38,7 +38,7 @@ public class Application {
         try {
             OctaneSDK.addClient(octaneServices.getOctaneConfiguration(), OctaneServices.class);
         } catch (Throwable r) {
-            log.error("failed while connection to octane "+ r.getMessage() );
+            log.error("Connection to Octane failed. "+ r.getMessage() );
         }
     }
 }

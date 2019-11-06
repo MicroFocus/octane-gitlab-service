@@ -6,7 +6,7 @@ import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
-import com.microfocus.octane.gitlab.helpers.ParsePath;
+import com.microfocus.octane.gitlab.helpers.ParsedPath;
 import com.microfocus.octane.gitlab.helpers.PathType;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -131,7 +131,7 @@ public class GitlabServices {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
                 try {
-                    ParsePath parseProject = new ParsePath(project, gitLabApi);
+                    ParsedPath parseProject = new ParsedPath(project, gitLabApi);
                     PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
                             .setJobCiId(parseProject.getFullPathOfPipeline())
                             .setName(parseProject.getFullPathOfProject());
@@ -156,7 +156,7 @@ public class GitlabServices {
     }
 
     PipelineNode createStructure(String buildId) {
-        ParsePath project = new ParsePath(buildId, gitLabApi, PathType.MULTI_BRUNCH);
+        ParsedPath project = new ParsedPath(buildId, gitLabApi, PathType.MULTI_BRUNCH);
         if (project.isMultiBranch()) {
             return dtoFactory.newDTO(PipelineNode.class)
                     .setJobCiId(project.getFullPathOfPipeline())
