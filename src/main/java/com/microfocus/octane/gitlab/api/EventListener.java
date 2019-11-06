@@ -7,12 +7,14 @@ import com.hp.octane.integrations.dto.causes.CIEventCause;
 import com.hp.octane.integrations.dto.causes.CIEventCauseType;
 import com.hp.octane.integrations.dto.events.CIEvent;
 import com.hp.octane.integrations.dto.events.CIEventType;
+import com.hp.octane.integrations.dto.events.MultiBranchType;
 import com.hp.octane.integrations.dto.events.PhaseType;
 import com.hp.octane.integrations.dto.scm.*;
 import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
 import com.hp.octane.integrations.dto.tests.TestRun;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
+import com.microfocus.octane.gitlab.helpers.Utils;
 import com.microfocus.octane.gitlab.services.OctaneServices;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,6 +23,7 @@ import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.CompareResults;
 import org.gitlab4j.api.models.Diff;
 import org.gitlab4j.api.models.Job;
+import org.gitlab4j.api.models.Project;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -78,11 +81,22 @@ public class EventListener {
                 } catch (Exception e) {
                     log.debug("Failed to trace an incoming event", e);
                 }
-                OctaneSDK.getInstance().getEventsService().publishEvent(event);
+                if (eventType == CIEventType.FINISHED || eventType == CIEventType.STARTED) {
+                    String s = Utils.cutPipelinePrefix(event.getProject());
+                    s = s.substring(0, s.lastIndexOf("/"));
+                    if (Utils.isMultiBranch(s, gitLabApi)) {
+                        event.setProjectDisplayName(Utils.cutPipelinePrefix(event.getProject()));
+                        event.setParentCiId("pipeline:" + s).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD);
+                    }
+                } else if (eventType == CIEventType.DELETED) {
+                    OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(event));
+                }
+                OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(event));
             });
             if (eventType == CIEventType.FINISHED) {
                 Integer projectId = isPipelineEvent(obj) ? obj.getJSONObject("project").getInt("id") : obj.getInt("project_id");
                 if (!isPipelineEvent(obj)) {
+                    Project project = gitLabApi.getProjectApi().getProject(projectId);
                     Integer jobId = getObjectId(obj);
                     Job job = gitLabApi.getJobApi().getJob(projectId, jobId);
                     final String gitlabTestResultsFilePattern = applicationSettings.getConfig().getGitlabTestResultsFilePattern();
@@ -90,7 +104,8 @@ public class EventListener {
                         if (job.getArtifactsFile() != null) {
                             List<TestRun> testResults = octaneServices.createTestList(projectId, job);
                             if (testResults != null && testResults.size() > 0) {
-                                OctaneSDK.getInstance().getTestsService().enqueuePushTestsResult(projectId.toString(), jobId.toString());
+                                OctaneSDK.getClients().forEach(client ->
+                                        client.getTestsService().enqueuePushTestsResult(project.getPathWithNamespace() + "/" + job.getName(), jobId.toString()));
                             } else {
                                 String warning = String.format("No test results found by using the %s pattern",
                                         applicationSettings.getConfig().getGitlabTestResultsFilePattern());
@@ -133,7 +148,7 @@ public class EventListener {
                 .setBuildCiId(buildCiId.toString())
                 .setNumber(buildCiId.toString())
                 .setProject(getCiFullName(obj))
-                .setResult(eventType == CIEventType.STARTED ? null : convertCiBuildResult(getStatus(obj)))
+                .setResult(eventType == CIEventType.STARTED || eventType == CIEventType.DELETED ? null : convertCiBuildResult(getStatus(obj)))
                 .setStartTime(startTime)
                 .setEstimatedDuration(null)
                 .setDuration(eventType == CIEventType.STARTED ? null : duration != null ? Math.round(duration instanceof Double ? (Double) duration : (Integer) duration) : null)
@@ -168,7 +183,7 @@ public class EventListener {
         CIEventCause rootCause = dtoFactory.newDTO(CIEventCause.class);
         rootCause.setType(type);
         rootCause.setUser(type == CIEventCauseType.USER ? getUser(obj) : null);
-        if (isPipelineEvent(obj)) {
+        if (isDeleteBranchEvent(obj) || isPipelineEvent(obj)) {
             causes.add(rootCause);
         } else {
             CIEventCause cause = dtoFactory.newDTO(CIEventCause.class);
@@ -182,21 +197,25 @@ public class EventListener {
     }
 
     private String getUser(JSONObject obj) {
-        return obj.getJSONObject("user").getString("name");
+        return isDeleteBranchEvent(obj) ? obj.getString("user_name") : obj.getJSONObject("user").getString("name");
     }
 
+
     private CIEventCauseType convertCiEventCauseType(JSONObject obj, boolean isScmNull) {
-        if (isScmNull) {
-            String pipelineSchedule = null;
-            try {
-                pipelineSchedule = isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString("pipeline_schedule") : null;
-            } catch (Exception e) {
-                log.warn("Failed to infer event cause type, using 'USER' as default");
-            }
-            if (pipelineSchedule != null && pipelineSchedule.equals("true")) return CIEventCauseType.TIMER;
+        if (isDeleteBranchEvent(obj)) {
             return CIEventCauseType.USER;
         }
-        return CIEventCauseType.SCM;
+        if (!isScmNull) {
+            return CIEventCauseType.SCM;
+        }
+        String pipelineSchedule = null;
+        try {
+            pipelineSchedule = isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString("pipeline_schedule") : null;
+        } catch (Exception e) {
+            log.warn("Failed to infer event cause type, using 'USER' as default");
+        }
+        if (pipelineSchedule != null && pipelineSchedule.equals("true")) return CIEventCauseType.TIMER;
+        return CIEventCauseType.USER;
     }
 
     private CIBuildResult convertCiBuildResult(String status) {
@@ -209,16 +228,31 @@ public class EventListener {
     }
 
     private String getStatus(JSONObject obj) {
-        return isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString("status") : obj.getString("build_status");
+        if (isPipelineEvent(obj)) {
+            return obj.getJSONObject("object_attributes").getString("status");
+        } else if (isDeleteBranchEvent(obj)) {
+            return "delete";
+        } else if (obj.getString("object_kind").equals("push")) {//push that not delete branch
+            return "undefined";
+        } else {
+            return obj.getString("build_status");
+        }
     }
 
     private String getCiName(JSONObject obj) {
-        return isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString("ref") : obj.getString("build_name");
+        if (isPipelineEvent(obj)) {
+            return obj.getJSONObject("object_attributes").getString("ref");
+        } else if (isDeleteBranchEvent(obj)) {
+            String branchDeleted = obj.getString("ref");
+            return Utils.getLastPartOfPath(branchDeleted);
+        } else {
+            return obj.getString("build_name");
+        }
     }
 
     private String getCiFullName(JSONObject obj) {
         String fullName = getProjectFullPath(obj) + "/" + getCiName(obj);
-        if (isPipelineEvent(obj)) fullName = "pipeline:" + fullName;
+        if (isPipelineEvent(obj) || isDeleteBranchEvent(obj)) fullName = "pipeline:" + fullName;
         return fullName;
     }
 
@@ -297,7 +331,13 @@ public class EventListener {
 
     private Object getDuration(JSONObject obj) {
         try {
-            return isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").get("duration") : obj.get("build_duration");
+            if (isPipelineEvent(obj)) {
+                return obj.getJSONObject("object_attributes").get("duration");
+            } else if (isDeleteBranchEvent(obj)) {
+                return null;
+            } else {
+                return obj.get("build_duration");
+            }
         } catch (Exception e) {
             log.warn("Failed to return the duration, using null as default.", e);
             return null;
@@ -315,17 +355,20 @@ public class EventListener {
     }
 
     private Integer getObjectId(JSONObject obj) {
-        return isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getInt("id") : obj.getInt("build_id");
+        if (isPipelineEvent(obj)) {
+            return obj.getJSONObject("object_attributes").getInt("id");
+        } else if (isDeleteBranchEvent(obj)) {
+            return obj.getInt("project_id");
+        } else {
+            return obj.getInt("build_id");
+        }
     }
 
     private CIEventType getEventType(JSONObject obj) {
-        String statusStr;
+        String statusStr = getStatus(obj);
         if (isPipelineEvent(obj)) {
-            statusStr = obj.getJSONObject("object_attributes").getString("status");
             if (statusStr.equals("pending")) return CIEventType.STARTED;
             if (statusStr.equals("running")) return CIEventType.UNDEFINED;
-        } else {
-            statusStr = obj.getString("build_status");
         }
         if (Arrays.asList(new String[]{"process", "enqueue", "pending", "created"}).contains(statusStr)) {
             return CIEventType.QUEUED;
@@ -333,6 +376,8 @@ public class EventListener {
             return CIEventType.FINISHED;
         } else if (Arrays.asList(new String[]{"running", "manual"}).contains(statusStr)) {
             return CIEventType.STARTED;
+        } else if (statusStr.equals("delete")) {
+            return CIEventType.DELETED;
         } else {
             return CIEventType.UNDEFINED;
         }
@@ -340,5 +385,12 @@ public class EventListener {
 
     private boolean isPipelineEvent(JSONObject obj) {
         return obj.getString("object_kind").equals("pipeline");
+    }
+
+    private boolean isDeleteBranchEvent(JSONObject obj) {
+        return (obj.getString("object_kind").equals("push") &&
+                obj.getString("after").contains("00000000000000000") &&
+                obj.isNull("checkout_sha"));
+
     }
 }

@@ -15,7 +15,7 @@
 
     <properties>
         <java.version>1.8</java.version>
-        <integrations.sdk.version>1.5.38</integrations.sdk.version>
+        <integrations.sdk.version>2.0.71.1</integrations.sdk.version>
     </properties>
 
     <repositories>

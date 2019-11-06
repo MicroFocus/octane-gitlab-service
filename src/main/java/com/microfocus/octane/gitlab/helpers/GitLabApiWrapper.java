@@ -1,5 +1,6 @@
 package com.microfocus.octane.gitlab.helpers;
 
+import com.hp.octane.integrations.utils.CIPluginSDKUtils;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import org.gitlab4j.api.GitLabApi;
@@ -33,9 +34,11 @@ public class GitLabApiWrapper {
     public void initGitlabApiWrapper() throws MalformedURLException, GitLabApiException, ConfigurationException {
         ConfigStructure config = applicationSettings.getConfig();
         Map<String, Object> proxyConfig = null;
-        String protocol = new URL(config.getGitlabLocation()).getProtocol().toLowerCase();
-        String proxyUrl = config.getProxyField(protocol, "proxyUrl");
-        if (proxyUrl != null) {
+        URL targetUrl = CIPluginSDKUtils.parseURL(config.getGitlabLocation());
+
+        if (ProxyHelper.isProxyNeeded(applicationSettings, targetUrl)) {
+            String protocol = targetUrl.getProtocol().toLowerCase();
+            String proxyUrl = config.getProxyField(protocol, "proxyUrl");
             String proxyPassword = config.getProxyField(protocol, "proxyPassword");
             if (proxyPassword != null && proxyPassword.startsWith(PREFIX)) {
                 try {

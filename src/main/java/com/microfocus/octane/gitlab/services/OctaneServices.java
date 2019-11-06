@@ -1,21 +1,21 @@
 package com.microfocus.octane.gitlab.services;
 
+import com.hp.octane.integrations.CIPluginServices;
+import com.hp.octane.integrations.OctaneConfiguration;
 import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.configuration.CIProxyConfiguration;
-import com.hp.octane.integrations.dto.configuration.OctaneConfiguration;
 import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.general.CIPluginInfo;
 import com.hp.octane.integrations.dto.general.CIServerInfo;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.hp.octane.integrations.dto.tests.*;
-import com.hp.octane.integrations.exceptions.PermissionException;
-import com.hp.octane.integrations.spi.CIPluginServicesBase;
-import com.hp.octane.integrations.util.CIPluginSDKUtils;
 import com.microfocus.octane.gitlab.app.Application;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.Pair;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
+import com.microfocus.octane.gitlab.helpers.ProxyHelper;
+import com.microfocus.octane.gitlab.helpers.Utils;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
@@ -32,7 +32,6 @@ import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 
-import javax.annotation.PostConstruct;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.parsers.DocumentBuilder;
@@ -54,7 +53,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -63,26 +61,19 @@ import static hudson.plugins.nunit.NUnitReportTransformer.NUNIT_TO_JUNIT_XSLFILE
 
 @Component
 @Scope("singleton")
-public class OctaneServices extends CIPluginServicesBase {
+public class OctaneServices extends CIPluginServices {
     private static final Logger log = LogManager.getLogger(OctaneServices.class);
     private static final DTOFactory dtoFactory = DTOFactory.getInstance();
 
-    private final GitLabApiWrapper gitLabApiWrapper;
-    private final ApplicationSettings applicationSettings;
-    private final GitlabServices gitlabServices;
+    private static GitLabApiWrapper gitLabApiWrapper;
+    private static ApplicationSettings applicationSettings;
+    private static GitlabServices gitlabServices;
+
     private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
-    private GitLabApi gitLabApi;
+    private static GitLabApi gitLabApi;
 
     @Autowired
-    public OctaneServices(GitLabApiWrapper gitLabApiWrapper, ApplicationSettings applicationSettings, GitlabServices gitlabServices) throws TransformerConfigurationException {
-        this.gitLabApiWrapper = gitLabApiWrapper;
-        this.applicationSettings = applicationSettings;
-        this.gitlabServices = gitlabServices;
-    }
-
-    @PostConstruct
-    public void initGitlabPluginServices() {
-        gitLabApi = gitLabApiWrapper.getGitLabApi();
+    public OctaneServices() throws TransformerConfigurationException {
     }
 
     @Override
@@ -101,7 +92,7 @@ public class OctaneServices extends CIPluginServicesBase {
                 .setVersion(ApplicationSettings.getPluginVersion());
     }
 
-    @Override
+    /* @Override*/
     public OctaneConfiguration getOctaneConfiguration() {
         OctaneConfiguration result = null;
         try {
@@ -115,11 +106,11 @@ public class OctaneServices extends CIPluginServicesBase {
                         throw new RuntimeException(e);
                     }
                 }
-                result = dtoFactory.newDTO(OctaneConfiguration.class)
-                        .setUrl(config.getOctaneLocation())
-                        .setSharedSpace(config.getOctaneSharedspace())
-                        .setApiKey(config.getOctaneApiClientID())
-                        .setSecret(octaneApiClientSecret);
+
+                result = OctaneConfiguration.createWithUiLocation(config.getCiServerIdentity(), config.getOctaneLocation());
+                result.setSharedSpace(config.getOctaneSharedspace());
+                result.setClient(config.getOctaneApiClientID());
+                result.setSecret(octaneApiClientSecret);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -141,7 +132,7 @@ public class OctaneServices extends CIPluginServicesBase {
     public CIProxyConfiguration getProxyConfiguration(URL targetUrl) {
         try {
             CIProxyConfiguration result = null;
-            if (isProxyNeeded(targetUrl)) {
+            if (ProxyHelper.isProxyNeeded(applicationSettings, targetUrl)) {
                 ConfigStructure config = applicationSettings.getConfig();
                 log.info("proxy is required for host " + targetUrl);
                 String protocol = targetUrl.getProtocol();
@@ -172,7 +163,7 @@ public class OctaneServices extends CIPluginServicesBase {
     public CIJobsList getJobsList(boolean includeParameters) {
         try {
             CIJobsList jobList = gitlabServices.getJobList();
-            if(jobList.getJobs().length < 1) {
+            if (jobList.getJobs().length < 1) {
                 log.warn("IMPORTANT: The integration user has no project member permissions");
             }
             return jobList;
@@ -207,11 +198,9 @@ public class OctaneServices extends CIPluginServicesBase {
     @Override
     public void runPipeline(String jobCiId, String originalBody) {
         try {
-            jobCiId = jobCiId.substring(jobCiId.indexOf(':') + 1);
-            int lastSlashIndex = jobCiId.lastIndexOf('/');
-            String projectPath = jobCiId.substring(0, lastSlashIndex);
-            String branch = jobCiId.substring(lastSlashIndex + 1);
-            Project project = gitLabApi.getProjectApi().getProject(projectPath);
+            String projectName = Utils.cutPipelinePrefix(jobCiId);
+            String branch = Utils.getLastPartOfPath(projectName);
+            Project project = gitLabApi.getProjectApi().getProject(projectName.substring(0, projectName.lastIndexOf("/")));
             gitLabApi.getPipelineApi().createPipeline(project.getId(), branch);
         } catch (GitLabApiException e) {
             log.error("Failed to start a pipeline", e);
@@ -220,12 +209,12 @@ public class OctaneServices extends CIPluginServicesBase {
     }
 
     @Override
-    public TestsResult getTestsResult(String projectId, String buildNumber) {
+    public InputStream getTestsResult(String jobFullName, String buildNumber) {
         TestsResult result = dtoFactory.newDTO(TestsResult.class);
         try {
-            Project project = gitLabApi.getProjectApi().getProject(Integer.parseInt(projectId));
-            Job job = gitLabApi.getJobApi().getJob(Integer.parseInt(projectId), Integer.parseInt(buildNumber));
-            String jobFullName = project.getPathWithNamespace() + "/" + job.getName();
+            String projectPath = jobFullName = jobFullName.substring(0, jobFullName.lastIndexOf("/"));
+            Project project = gitLabApi.getProjectApi().getProject(projectPath);
+            Job job = gitLabApi.getJobApi().getJob(project.getId(), Integer.parseInt(buildNumber));
             BuildContext buildContext = dtoFactory.newDTO(BuildContext.class)
                     .setJobId(jobFullName)
                     .setJobName(jobFullName)
@@ -233,7 +222,7 @@ public class OctaneServices extends CIPluginServicesBase {
                     .setBuildName(job.getId().toString())
                     .setServerId(applicationSettings.getConfig().getCiServerIdentity());
             result = result.setBuildContext(buildContext);
-            List<TestRun> tests = createTestList(Integer.parseInt(projectId), job);
+            List<TestRun> tests = createTestList(project.getId(), job);
             if (tests != null && !tests.isEmpty()) {
                 result.setTestRuns(tests);
             } else {
@@ -242,8 +231,7 @@ public class OctaneServices extends CIPluginServicesBase {
         } catch (Exception e) {
             log.warn("Failed to return test results", e);
         }
-
-        return result;
+        return dtoFactory.dtoToXmlStream(result);
     }
 
     public List<TestRun> createTestList(Integer projectId, Job job) {
@@ -255,8 +243,8 @@ public class OctaneServices extends CIPluginServicesBase {
                 for (Map.Entry<String, ByteArrayInputStream> artifact : artifacts) {
                     try {
                         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-                        dbf.setFeature("http://xml.org/sax/features/external-general-entities",false);
-                        dbf.setFeature("http://xml.org/sax/features/external-parameter-entities",false);
+                        dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+                        dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
                         DocumentBuilder db = dbf.newDocumentBuilder();
                         Document doc = db.parse(new InputSource(artifact.getValue()));
                         String rootTagName = doc.getDocumentElement().getTagName().toLowerCase();
@@ -355,16 +343,19 @@ public class OctaneServices extends CIPluginServicesBase {
         result.add(tr);
     }
 
-    private boolean isProxyNeeded(URL targetHost) {
-        if (targetHost == null) return false;
-        boolean result = false;
-        ConfigStructure config = applicationSettings.getConfig();
-        if (config.getProxyField(targetHost.getProtocol(), "proxyUrl") != null) {
-            String nonProxyHostsStr = config.getProxyField(targetHost.getProtocol(), "nonProxyHosts");
-            if (!CIPluginSDKUtils.isNonProxyHost(targetHost.getHost(), nonProxyHostsStr)) {
-                result = true;
-            }
-        }
-        return result;
+    @Autowired
+    public void setApplicationSettings(ApplicationSettings applicationSettings) {
+        this.applicationSettings = applicationSettings;
+    }
+
+    @Autowired
+    public void setGitlabServices(GitlabServices gitlabServices) {
+        this.gitlabServices = gitlabServices;
+    }
+
+    @Autowired
+    public void setGitLabApi(GitLabApiWrapper gitLabApiWrapper) {
+        this.gitLabApiWrapper = gitLabApiWrapper;
+        gitLabApi = gitLabApiWrapper.getGitLabApi();
     }
 }
