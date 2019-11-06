@@ -6,7 +6,8 @@ import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
-import com.microfocus.octane.gitlab.helpers.Utils;
+import com.microfocus.octane.gitlab.helpers.ParsePath;
+import com.microfocus.octane.gitlab.helpers.PathType;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -16,7 +17,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
-import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectHook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -131,11 +131,11 @@ public class GitlabServices {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
                 try {
-                    String buildId = project.getPathWithNamespace();
+                    ParsePath parseProject = new ParsePath(project, gitLabApi);
                     PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
-                            .setJobCiId("pipeline:" + buildId)
-                            .setName(buildId);
-                    if (Utils.isMultiBranch(project.getId(),gitLabApi)) {
+                            .setJobCiId(parseProject.getFullPathOfPipeline())
+                            .setName(parseProject.getFullPathOfProject());
+                    if (parseProject.isMultiBranch()) {
                         buildConf.setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
                     }
                     list.add(buildConf);
@@ -156,21 +156,14 @@ public class GitlabServices {
     }
 
     PipelineNode createStructure(String buildId) {
-        String pipelinePath = Utils.cutPipelinePrefix(buildId);
-        try {
-            List<Branch> branches = gitLabApi.getRepositoryApi().getBranches(pipelinePath);
-            if (branches.size() > 1) {
-                return dtoFactory.newDTO(PipelineNode.class)
-                        .setJobCiId(buildId)
-                        .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
-            }
-            String displayName = Utils.getPipelineDisplayName(buildId);
+        ParsePath project = new ParsePath(buildId, gitLabApi, PathType.MULTI_BRUNCH);
+        if (project.isMultiBranch()) {
             return dtoFactory.newDTO(PipelineNode.class)
-                    .setJobCiId(buildId+"/"+branches.get(0).getName())
-                    .setName(displayName);
-        } catch (GitLabApiException e) {
-            log.warn("Failed to get branches from " + pipelinePath, e);
+                    .setJobCiId(project.getFullPathOfPipeline())
+                    .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
         }
-        return null;
+        return dtoFactory.newDTO(PipelineNode.class)
+                .setJobCiId(project.getFullPathOfPipelineWithBranch())
+                .setName(project.getCurrentBranchOrDefault());
     }
 }

@@ -14,7 +14,8 @@ import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
 import com.hp.octane.integrations.dto.tests.TestRun;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
-import com.microfocus.octane.gitlab.helpers.Utils;
+import com.microfocus.octane.gitlab.helpers.ParsePath;
+import com.microfocus.octane.gitlab.helpers.PathType;
 import com.microfocus.octane.gitlab.services.OctaneServices;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -82,11 +83,12 @@ public class EventListener {
                     log.debug("Failed to trace an incoming event", e);
                 }
                 if (eventType == CIEventType.FINISHED || eventType == CIEventType.STARTED) {
-                    String s = Utils.cutPipelinePrefix(event.getProject());
-                    s = s.substring(0, s.lastIndexOf("/"));
-                    if (Utils.isMultiBranch(s, gitLabApi)) {
-                        event.setProjectDisplayName(Utils.cutPipelinePrefix(event.getProject()));
-                        event.setParentCiId("pipeline:" + s).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD);
+                    if (event.getProject().contains("pipeline:")) {
+                        ParsePath parsePath = new ParsePath(event.getProject(), gitLabApi, PathType.PIPELINE);
+                        if (parsePath.isMultiBranch()) {
+                            event.setProjectDisplayName(parsePath.getFullPathOfProjectWithBranch());
+                            event.setParentCiId(parsePath.getFullPathOfPipeline()).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD);
+                        }
                     }
                 } else if (eventType == CIEventType.DELETED) {
                     OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(event));
@@ -200,7 +202,6 @@ public class EventListener {
         return isDeleteBranchEvent(obj) ? obj.getString("user_name") : obj.getJSONObject("user").getString("name");
     }
 
-
     private CIEventCauseType convertCiEventCauseType(JSONObject obj, boolean isScmNull) {
         if (isDeleteBranchEvent(obj)) {
             return CIEventCauseType.USER;
@@ -243,8 +244,7 @@ public class EventListener {
         if (isPipelineEvent(obj)) {
             return obj.getJSONObject("object_attributes").getString("ref");
         } else if (isDeleteBranchEvent(obj)) {
-            String branchDeleted = obj.getString("ref");
-            return Utils.getLastPartOfPath(branchDeleted);
+            return ParsePath.getLastPartOfPath(obj.getString("ref"));
         } else {
             return obj.getString("build_name");
         }
