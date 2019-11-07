@@ -350,4 +350,8 @@ public class OctaneServices extends CIPluginServices {
         this.gitLabApiWrapper = gitLabApiWrapper;
         gitLabApi = gitLabApiWrapper.getGitLabApi();
     }
+
+    public GitLabApiWrapper getGitLabApiWrapper() {
+        return gitLabApiWrapper;
+    }
 }
