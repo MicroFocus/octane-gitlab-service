@@ -40,8 +40,7 @@ public class Application {
         try {
             tryToConnectToOctane(octaneServices);
             OctaneSDK.addClient(octaneServices.getOctaneConfiguration(), OctaneServices.class);
-        } catch (IllegalArgumentException r) {
-            System.out.println("Connection to Octane failed: " + r.getMessage());
+        } catch (IllegalArgumentException | OctaneConnectivityException r) {
             log.warn("Connection to Octane failed: " + r.getMessage());
         }
     }
