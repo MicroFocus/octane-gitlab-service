@@ -40,6 +40,7 @@ public class Application {
         try {
             tryToConnectToOctane(octaneServices);
             OctaneSDK.addClient(octaneServices.getOctaneConfiguration(), OctaneServices.class);
+            System.out.println("Connection to Octane was successful. gitlab application is ready...");
         } catch (IllegalArgumentException | OctaneConnectivityException r) {
             log.warn("Connection to Octane failed: " + r.getMessage());
         }
