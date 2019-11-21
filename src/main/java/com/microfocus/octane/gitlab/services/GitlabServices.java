@@ -63,10 +63,12 @@ public class GitlabServices {
                     gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
                 } catch (GitLabApiException e) {
                     log.warn("Failed to create a GitLab web hook", e);
+                    throw e;
                 }
             }
         } catch (GitLabApiException e) {
             log.warn("Failed to create GitLab web hooks", e);
+            throw new RuntimeException(e);
         }
     }
 

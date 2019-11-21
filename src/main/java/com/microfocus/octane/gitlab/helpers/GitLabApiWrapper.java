@@ -3,6 +3,8 @@ package com.microfocus.octane.gitlab.helpers;
 import com.hp.octane.integrations.utils.CIPluginSDKUtils;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.ProxyClientConfig;
@@ -24,6 +26,7 @@ public class GitLabApiWrapper {
 
     private final ApplicationSettings applicationSettings;
     private GitLabApi gitLabApi;
+    private static final Logger log = LogManager.getLogger(GitLabApiWrapper.class);
 
     @Autowired
     public GitLabApiWrapper(ApplicationSettings applicationSettings) {
@@ -64,7 +67,8 @@ public class GitLabApiWrapper {
         try {
             gitLabApi.getProjectApi().getOwnedProjects();
         } catch (GitLabApiException e) {
-            System.out.println("GitLab API failed to perform basic operations. Please validate GitLab properties - location, personalAccessToken(including token permissions/scopes in GitLab server)");
+            log.error("GitLab API failed to perform basic operations. Please validate GitLab properties - location, personalAccessToken(including token permissions/scopes in GitLab server)" +
+                    " if one of the end points doesnt required proxy, please put it on the non proxy hosts.");
             throw e;
         }
     }
