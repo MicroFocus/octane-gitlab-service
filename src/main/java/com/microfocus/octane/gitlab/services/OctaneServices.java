@@ -36,20 +36,14 @@ import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.zip.ZipFile;
 
 import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.PREFIX;
 import static hudson.plugins.nunit.NUnitReportTransformer.NUNIT_TO_JUNIT_XSLFILE_STR;
@@ -279,26 +273,41 @@ public class OctaneServices extends CIPluginServices {
     private List<Map.Entry<String, ByteArrayInputStream>> extractArtifacts(InputStream inputStream) {
         PathMatcher matcher = FileSystems.getDefault()
                 .getPathMatcher(applicationSettings.getConfig().getGitlabTestResultsFilePattern());
+        File tempFile = null;
         try {
-            ZipInputStream zis = new ZipInputStream(inputStream);
+            tempFile = File.createTempFile("gitlab-artifact", ".zip");
+
+            try (OutputStream os = new FileOutputStream(tempFile)) {
+                StreamHelper.copyStream(inputStream, os);
+            }
+
+            inputStream.close();
+
+            ZipFile zipFile = new ZipFile(tempFile);
+
             List<Map.Entry<String, ByteArrayInputStream>> result = new LinkedList<>();
-            for (ZipEntry entry = zis.getNextEntry(); entry != null; entry = zis.getNextEntry()) {
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+
                 if (matcher.matches(Paths.get(entry.getName()))) {
-                    while (zis.available() > 0) {
-                        ByteArrayOutputStream entryStream = new ByteArrayOutputStream();
-                        byte[] buffer = new byte[1024];
-                        int length;
-                        while ((length = zis.read(buffer)) != -1) {
-                            entryStream.write(buffer, 0, length);
-                        }
-                        result.add(Pair.of(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
+                    ByteArrayOutputStream entryStream = new ByteArrayOutputStream();
+
+                    try (InputStream zipEntryStream = zipFile.getInputStream(entry)) {
+                        StreamHelper.copyStream(zipEntryStream, entryStream);
                     }
+                    result.add(Pair.of(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
                 }
             }
             return result;
         } catch (IOException e) {
             log.warn("Failed to extract the real artifacts, using null as default.", e);
             return null;
+        } finally {
+            if (tempFile != null) {
+                tempFile.delete();
+            }
         }
     }
 
