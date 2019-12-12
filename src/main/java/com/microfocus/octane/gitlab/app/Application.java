@@ -1,12 +1,17 @@
 package com.microfocus.octane.gitlab.app;
 
+import com.hp.octane.integrations.OctaneConfiguration;
 import com.hp.octane.integrations.OctaneSDK;
-import com.hp.octane.integrations.spi.CIPluginServices;
+import com.hp.octane.integrations.exceptions.OctaneConnectivityException;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
+import com.microfocus.octane.gitlab.services.OctaneServices;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -16,6 +21,7 @@ import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.encrypt;
 @SpringBootApplication
 @ComponentScan("com.microfocus.octane.gitlab")
 public class Application {
+    private static final Logger log = LogManager.getLogger(Application.class);
 
     public static void main(String[] args) throws GeneralSecurityException, IOException {
         if (args.length > 0 && args[0].equals("encrypt")) {
@@ -30,8 +36,38 @@ public class Application {
             }
         }
         ConfigurableApplicationContext context = SpringApplication.run(Application.class, args);
-        CIPluginServices pluginServices = context.getBean("octaneServices", CIPluginServices.class);
-        OctaneSDK.init(pluginServices);
+        OctaneServices octaneServices = context.getBean("octaneServices", OctaneServices.class);
+        try {
+            tryToConnectToOctane(octaneServices);
+            OctaneSDK.addClient(octaneServices.getOctaneConfiguration(), OctaneServices.class);
+            System.out.println("Connection to Octane was successful. gitlab application is ready...");
+        } catch (IllegalArgumentException | OctaneConnectivityException r) {
+            log.warn("Connection to Octane failed: " + r.getMessage());
+        }
     }
 
+    private static void tryToConnectToOctane(OctaneServices octaneServices) throws OctaneConnectivityException {
+        OctaneConfiguration octaneConfiguration = octaneServices.getOctaneConfiguration();
+        if (StringUtils.isEmpty(octaneConfiguration.getUrl())) {
+            throw new IllegalArgumentException("Location URL is missing");
+        }
+        if (StringUtils.isEmpty(octaneConfiguration.getClient())) {
+            throw new IllegalArgumentException("Client ID is missing");
+        }
+        if (StringUtils.isEmpty(octaneConfiguration.getSecret())) {
+            throw new IllegalArgumentException("Client Secret is missing");
+        }
+        octaneServices.getGitLabApiWrapper().getGitLabApi().getSecretToken();
+        try {
+            OctaneSDK.testAndValidateOctaneConfiguration(octaneConfiguration.getUrl(),
+                    octaneConfiguration.getSharedSpace(),
+                    octaneConfiguration.getClient(),
+                    octaneConfiguration.getSecret(),
+                    OctaneServices.class);
+        } catch (OctaneConnectivityException e) {
+            throw new IllegalArgumentException(e.getErrorMessageVal());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unexpected exception :" + e.getMessage());
+        }
+    }
 }

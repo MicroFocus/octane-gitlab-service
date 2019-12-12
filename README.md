@@ -162,6 +162,48 @@ In order to set the HTTP(S) proxy, an “environment” row should be added to t
 
 After adding the proxy settings, restart the gitlab-runner service.
 
+### Logging (Log4J 2 Configuration)
+The project supports Log4J 2 configuration. In application.properties use the property below for specifying the Log4J 2 configuration file.
+```
+logging.config
+```
+
+For example:
+```
+logging.config=./log4j2.xml
+``` 
+
+Below is an example of a Log4J 2 XML configuration:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="warn">
+    <Properties>
+        <Property name="basePath">./logs</Property>
+    </Properties>
+ 
+    <Appenders>
+        <RollingFile name="fileLogger" fileName="${basePath}/app-info.log" filePattern="${basePath}/archive/app-info-%d{yyyy-MM-dd}.log">
+            <PatternLayout>
+                <pattern>[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n</pattern>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+            </Policies>
+        </RollingFile> 
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="info">
+            <appender-ref ref="console" />
+            <appender-ref ref="fileLogger" />
+        </Root>
+    </Loggers>
+</Configuration>
+``` 
+
 ### Allowing requests to the local network
 If the GitLab server and the octane-gitlab-service app both run on the same network, you need to enable "Allow requests to the local network from hooks and services" as follows:
 - Open the [your_gitlab_server]/admin/application_settings page.

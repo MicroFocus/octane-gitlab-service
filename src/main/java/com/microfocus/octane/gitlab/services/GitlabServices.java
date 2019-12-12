@@ -1,10 +1,13 @@
 package com.microfocus.octane.gitlab.services;
 
 import com.hp.octane.integrations.dto.DTOFactory;
+import com.hp.octane.integrations.dto.events.MultiBranchType;
 import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
+import com.microfocus.octane.gitlab.helpers.ParsedPath;
+import com.microfocus.octane.gitlab.helpers.PathType;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -14,10 +17,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
-import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectHook;
-import org.gitlab4j.api.models.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Scope;
@@ -62,10 +63,12 @@ public class GitlabServices {
                     gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
                 } catch (GitLabApiException e) {
                     log.warn("Failed to create a GitLab web hook", e);
+                    throw e;
                 }
             }
         } catch (GitLabApiException e) {
             log.warn("Failed to create GitLab web hooks", e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -130,26 +133,15 @@ public class GitlabServices {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
                 try {
-                    for (Branch branch : gitLabApi.getRepositoryApi().getBranches(project.getId())) {
-                        String buildId = project.getPathWithNamespace() + "/" + branch.getName();
-                        PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                .setJobCiId("pipeline:" + buildId)
-                                .setName(buildId);
-                        list.add(buildConf);
+                    ParsedPath parseProject = new ParsedPath(project, gitLabApi);
+                    PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
+                            .setJobCiId(parseProject.getFullPathOfPipeline())
+                            .setName(parseProject.getFullPathOfProject());
+                    if (parseProject.isMultiBranch()) {
+                        buildConf.setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
                     }
+                    list.add(buildConf);
                 } catch (Exception e) {
-                    log.warn("Failed to add some branches to the job list", e);
-                }
-
-                try {
-                    for (Tag tag : gitLabApi.getTagsApi().getTags(project.getId())) {
-                        String buildId = project.getPathWithNamespace() + "/" + tag.getName();
-                        PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                .setJobCiId("pipeline:" + buildId)
-                                .setName(buildId);
-                        list.add(buildConf);
-                    }
-                } catch(Exception e) {
                     log.warn("Failed to add some tags to the job list", e);
                 }
             }
@@ -166,9 +158,14 @@ public class GitlabServices {
     }
 
     PipelineNode createStructure(String buildId) {
-        String displayName = buildId.split("/")[2];
+        ParsedPath project = new ParsedPath(buildId, gitLabApi, PathType.MULTI_BRUNCH);
+        if (project.isMultiBranch()) {
+            return dtoFactory.newDTO(PipelineNode.class)
+                    .setJobCiId(project.getFullPathOfPipeline())
+                    .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
+        }
         return dtoFactory.newDTO(PipelineNode.class)
-                .setJobCiId(buildId)
-                .setName(displayName);
+                .setJobCiId(project.getFullPathOfPipelineWithBranch())
+                .setName(project.getCurrentBranchOrDefault());
     }
 }

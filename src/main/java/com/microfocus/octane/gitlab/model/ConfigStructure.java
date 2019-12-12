@@ -102,12 +102,6 @@ public class ConfigStructure {
             }
         }
 
-        int contextPos = octaneLocation.indexOf("/ui");
-        if (contextPos < 0) {
-            validationErrors.add("Missing /ui path in octane.location");
-        } else {
-            octaneLocation = octaneLocation.substring(0, contextPos);
-        }
 
         if (validationErrors.size() > 0) {
             AtomicInteger counter = new AtomicInteger(1);
