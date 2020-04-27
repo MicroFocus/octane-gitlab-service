@@ -134,11 +134,16 @@ public class GitlabServices {
             for (Project project : projects) {
                 try {
                     ParsedPath parseProject = new ParsedPath(project, gitLabApi);
-                    PipelineNode buildConf = dtoFactory.newDTO(PipelineNode.class)
-                            .setJobCiId(parseProject.getFullPathOfPipeline())
-                            .setName(parseProject.getFullPathOfProject());
+                    PipelineNode buildConf;
                     if (parseProject.isMultiBranch()) {
-                        buildConf.setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
+                        buildConf = dtoFactory.newDTO(PipelineNode.class)
+                                .setJobCiId(parseProject.getFullPathOfPipeline())
+                                .setName(parseProject.getFullPathOfProject())
+                                .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
+                    } else {
+                        buildConf = dtoFactory.newDTO(PipelineNode.class)
+                                .setJobCiId(parseProject.getFullPathOfPipelineWithBranch())
+                                .setName(parseProject.getFullPathOfProject());
                     }
                     list.add(buildConf);
                 } catch (Exception e) {
@@ -164,6 +169,7 @@ public class GitlabServices {
                     .setJobCiId(project.getFullPathOfPipeline())
                     .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
         }
+        project=new ParsedPath(buildId,gitLabApi,PathType.PIPELINE);
         return dtoFactory.newDTO(PipelineNode.class)
                 .setJobCiId(project.getFullPathOfPipelineWithBranch())
                 .setName(project.getCurrentBranchOrDefault());
