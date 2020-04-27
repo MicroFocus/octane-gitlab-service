@@ -48,7 +48,8 @@ public class ParsedPath {
     }
 
     public Boolean isMultiBranch() {
-        return getBranches().size() > 1;
+        List<Branch> branches = getBranches();
+        return branches != null ? branches.size() > 1 : false;
     }
 
     public String getFullPathOfProject() {
@@ -92,7 +93,7 @@ public class ParsedPath {
             try {
                 branches = gitlabApi.getRepositoryApi().getBranches(this.getFullPathOfProject());
             } catch (GitLabApiException e) {
-                log.error("failed while getting branches from "+this.getFullPathOfProject());
+                log.error("failed while getting branches from " + this.getFullPathOfProject());
             }
         }
         return branches;
@@ -104,7 +105,7 @@ public class ParsedPath {
                 this.project = gitlabApi.getProjectApi().getProject(this.getFullPathOfProject());
                 this.id = project.getId();
             } catch (Exception e) {
-                log.error("failed while getting project from "+this.getFullPathOfProject());
+                log.error("failed while getting project from " + this.getFullPathOfProject());
             }
         }
         return id;
