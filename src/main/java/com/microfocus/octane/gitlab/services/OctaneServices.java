@@ -202,7 +202,7 @@ public class OctaneServices extends CIPluginServices {
             ParsedPath project = new ParsedPath(ParsedPath.cutLastPartOfPath(jobFullName), gitLabApi, PathType.PROJECT);
             Job job = gitLabApi.getJobApi().getJob(project.getFullPathOfProject(), Integer.parseInt(buildNumber));
             BuildContext buildContext = dtoFactory.newDTO(BuildContext.class)
-                    .setJobId(project.getFullPathOfProjectWithBranch())
+                    .setJobId(project.getFullPathOfProjectWithBranch().toLowerCase())
                     .setJobName(project.getFullPathOfProject())
                     .setBuildId(job.getId().toString())
                     .setBuildName(job.getId().toString())
