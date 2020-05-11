@@ -57,11 +57,11 @@ public class ParsedPath {
     }
 
     public String getFullPathOfProjectWithBranch() {
-        return groups + "/" + displayName + "/" + getCurrentBranchOrDefault();
+        return getFullPathOfProject() + "/" + getCurrentBranchOrDefault();
     }
 
     public String getFullPathOfPipelineWithBranch() {
-        return "pipeline:" + groups + "/" + displayName + "/" + getCurrentBranchOrDefault();
+        return getFullPathOfPipeline() + "/" + getCurrentBranchOrDefault();
     }
 
     public String getFullPathOfPipeline() {

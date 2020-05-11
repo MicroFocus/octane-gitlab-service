@@ -137,12 +137,12 @@ public class GitlabServices {
                     PipelineNode buildConf;
                     if (parseProject.isMultiBranch()) {
                         buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                .setJobCiId(parseProject.getFullPathOfPipeline())
+                                .setJobCiId(parseProject.getFullPathOfPipeline().toLowerCase())
                                 .setName(parseProject.getFullPathOfProject())
                                 .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
                     } else {
                         buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                .setJobCiId(parseProject.getFullPathOfPipelineWithBranch())
+                                .setJobCiId(parseProject.getFullPathOfPipelineWithBranch().toLowerCase())
                                 .setName(parseProject.getFullPathOfProject());
                     }
                     list.add(buildConf);
@@ -166,12 +166,12 @@ public class GitlabServices {
         ParsedPath project = new ParsedPath(buildId, gitLabApi, PathType.MULTI_BRUNCH);
         if (project.isMultiBranch()) {
             return dtoFactory.newDTO(PipelineNode.class)
-                    .setJobCiId(project.getFullPathOfPipeline())
+                    .setJobCiId(project.getFullPathOfPipeline().toLowerCase())
                     .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
         }
         project=new ParsedPath(buildId,gitLabApi,PathType.PIPELINE);
         return dtoFactory.newDTO(PipelineNode.class)
-                .setJobCiId(project.getFullPathOfPipelineWithBranch())
+                .setJobCiId(project.getFullPathOfPipelineWithBranch().toLowerCase())
                 .setName(project.getCurrentBranchOrDefault());
     }
 }
