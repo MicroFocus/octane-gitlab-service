@@ -59,7 +59,7 @@ public class Application {
         }
         octaneServices.getGitLabApiWrapper().getGitLabApi().getSecretToken();
         try {
-            OctaneSDK.testAndValidateOctaneConfiguration(octaneConfiguration.getUrl(),
+            OctaneSDK.testOctaneConfigurationAndFetchAvailableWorkspaces(octaneConfiguration.getUrl(),
                     octaneConfiguration.getSharedSpace(),
                     octaneConfiguration.getClient(),
                     octaneConfiguration.getSecret(),
