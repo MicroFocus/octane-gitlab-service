@@ -149,7 +149,7 @@ public class OctaneServices extends CIPluginServices {
 
 
     @Override
-    public CIJobsList getJobsList(boolean includeParameters) {
+    public CIJobsList getJobsList(boolean includeParameters, Long workspaceId) {
         try {
             CIJobsList jobList = gitlabServices.getJobList();
             if (jobList.getJobs().length < 1) {

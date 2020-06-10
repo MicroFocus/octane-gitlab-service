@@ -107,7 +107,7 @@ public class EventListener {
                             List<TestRun> testResults = octaneServices.createTestList(projectId, job);
                             if (testResults != null && testResults.size() > 0) {
                                 OctaneSDK.getClients().forEach(client ->
-                                        client.getTestsService().enqueuePushTestsResult(project.getPathWithNamespace() + "/" + job.getName(), jobId.toString()));
+                                        client.getTestsService().enqueuePushTestsResult(project.getPathWithNamespace() + "/" + job.getName(), jobId.toString(), null));
                             } else {
                                 String warning = String.format("No test results found by using the %s pattern",
                                         applicationSettings.getConfig().getGitlabTestResultsFilePattern());
