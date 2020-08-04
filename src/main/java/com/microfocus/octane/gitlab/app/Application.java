@@ -43,6 +43,7 @@ public class Application {
             System.out.println("Connection to Octane was successful. gitlab application is ready...");
         } catch (IllegalArgumentException | OctaneConnectivityException r) {
             log.warn("Connection to Octane failed: " + r.getMessage());
+            System.out.println("Connection to Octane failed: " + r.getMessage());
         }
     }
 
