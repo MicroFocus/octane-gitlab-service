@@ -67,8 +67,10 @@ public class GitLabApiWrapper {
         try {
             gitLabApi.getProjectApi().getOwnedProjects();
         } catch (GitLabApiException e) {
-            log.error("GitLab API failed to perform basic operations. Please validate GitLab properties - location, personalAccessToken(including token permissions/scopes in GitLab server)" +
-                    " if one of the end points doesnt required proxy, please put it on the non proxy hosts.");
+            String message= "GitLab API failed to perform basic operations. Please validate GitLab properties - location, personalAccessToken(including token permissions/scopes in GitLab server)" +
+                    " if one of the end points doesnt required proxy, please put it on the non proxy hosts.";
+            log.error(message);
+            System.out.println(message);
             throw e;
         }
     }
