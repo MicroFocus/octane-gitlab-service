@@ -130,7 +130,7 @@ public class GitlabServices {
         CIJobsList ciJobsList = dtoFactory.newDTO(CIJobsList.class);
         List<PipelineNode> list = new ArrayList<>();
         try {
-            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
+            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getOwnedProjects();
             for (Project project : projects) {
                 try {
                     ParsedPath parseProject = new ParsedPath(project, gitLabApi);
