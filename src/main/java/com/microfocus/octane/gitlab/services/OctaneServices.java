@@ -86,7 +86,7 @@ public class OctaneServices extends CIPluginServices {
         OctaneConfiguration result = null;
         try {
             ConfigStructure config = applicationSettings.getConfig();
-            if (config != null && config.getOctaneLocation() != null && !config.getOctaneLocation().isEmpty() && config.getOctaneSharedspace() != null) {
+            if (config != null && config.getOctaneLocation() != null && !config.getOctaneLocation().isEmpty()) {
                 String octaneApiClientSecret = config.getOctaneApiClientSecret();
                 if (octaneApiClientSecret != null && octaneApiClientSecret.startsWith(PREFIX)) {
                     try {
@@ -97,7 +97,6 @@ public class OctaneServices extends CIPluginServices {
                 }
 
                 result = OctaneConfiguration.createWithUiLocation(config.getCiServerIdentity(), config.getOctaneLocation());
-                result.setSharedSpace(config.getOctaneSharedspace());
                 result.setClient(config.getOctaneApiClientID());
                 result.setSecret(octaneApiClientSecret);
             }
@@ -212,7 +211,7 @@ public class OctaneServices extends CIPluginServices {
             if (tests != null && !tests.isEmpty()) {
                 result.setTestRuns(tests);
             } else {
-                log.warn(String.format("Unable to extract test results from files defined by the %s pattern. Check the pattern correctness"));
+                log.warn("Unable to extract test results from files defined by the %s pattern. Check the pattern correctness");
             }
         } catch (Exception e) {
             log.warn("Failed to return test results", e);
