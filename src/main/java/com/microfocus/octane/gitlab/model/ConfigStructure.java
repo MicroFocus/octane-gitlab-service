@@ -30,8 +30,6 @@ public class ConfigStructure {
     @Value("${octane.location:#{null}}")
     private String octaneLocation;
 
-    private String octaneSharedspace;
-
     @Value("${octane.apiClientID:#{null}}")
     private String octaneApiClientID;
 
@@ -75,7 +73,7 @@ public class ConfigStructure {
     private String httpsNonProxyHosts;
 
     @PostConstruct
-    public void init() throws URISyntaxException {
+    public void init() {
         List<Map.Entry<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
         mandatoryGetters.add(Pair.of("octane.location", this::getOctaneLocation));
         mandatoryGetters.add(Pair.of("octane.apiClientID", this::getOctaneApiClientID));
@@ -88,20 +86,6 @@ public class ConfigStructure {
                 validationErrors.add("Missing property " + mg.getKey());
             }
         });
-
-        List<NameValuePair> params = URLEncodedUtils.parse(new URI(octaneLocation), Charset.forName("UTF-8"));
-        Optional<NameValuePair> sharedspace = params.stream().filter(p -> p.getName().toLowerCase().equals("p")).findFirst();
-        if (!sharedspace.isPresent()) {
-            validationErrors.add("Missing 'p' query parameter in octane.location");
-        } else {
-            Matcher matcher = Pattern.compile("^\\d+").matcher(sharedspace.get().getValue());
-            if(matcher.find()) {
-                octaneSharedspace = matcher.group();
-            } else {
-                validationErrors.add("Value of the 'p' query parameter must start with an integer");
-            }
-        }
-
 
         if (validationErrors.size() > 0) {
             AtomicInteger counter = new AtomicInteger(1);
@@ -124,10 +108,6 @@ public class ConfigStructure {
 
     public String getOctaneLocation() {
         return octaneLocation;
-    }
-
-    public String getOctaneSharedspace() {
-        return octaneSharedspace;
     }
 
     public String getOctaneApiClientID() {
