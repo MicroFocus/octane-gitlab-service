@@ -107,7 +107,7 @@ public class EventListener {
                             List<TestRun> testResults = octaneServices.createTestList(projectId, job);
                             if (testResults != null && testResults.size() > 0) {
                                 OctaneSDK.getClients().forEach(client ->
-                                        client.getTestsService().enqueuePushTestsResult(project.getPathWithNamespace() + "/" + job.getName(), jobId.toString(), null));
+                                        client.getTestsService().enqueuePushTestsResult(project.getPathWithNamespace().toLowerCase() + "/" + job.getName(), jobId.toString(), null));
                             } else {
                                 String warning = String.format("No test results found by using the %s pattern",
                                         applicationSettings.getConfig().getGitlabTestResultsFilePattern());
@@ -267,12 +267,12 @@ public class EventListener {
     private String getProjectFullPath(JSONObject obj) {
         try {
             if (isPipelineEvent(obj)) {
-                return new URL(obj.getJSONObject("project").getString("web_url")).getPath().substring(1);
+                return new URL(obj.getJSONObject("project").getString("web_url")).getPath().substring(1).toLowerCase();
             }
 
             // I couldn't find any other suitable property rather then repository.homepage.
             // But this one may potentially cause a defect with external repos.
-            return new URL(obj.getJSONObject("repository").getString("homepage")).getPath().substring(1);
+            return new URL(obj.getJSONObject("repository").getString("homepage")).getPath().substring(1).toLowerCase();
         } catch (MalformedURLException e) {
             log.warn("Failed to return the project full path, using an empty string as default", e);
             return "";
