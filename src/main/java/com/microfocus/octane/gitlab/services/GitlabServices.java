@@ -53,17 +53,19 @@ public class GitlabServices {
         URL webhookListenerUrl = new URL(serverBaseUrl, "events");
         gitLabApi = gitLabApiWrapper.getGitLabApi();
         try {
-            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getOwnedProjects();
+            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
-                try {
-                    deleteWebHooks(webhookListenerUrl, project);
-                    ProjectHook hook = new ProjectHook();
-                    hook.setJobEvents(true);
-                    hook.setPipelineEvents(true);
-                    gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
-                } catch (GitLabApiException e) {
-                    log.warn("Failed to create a GitLab web hook", e);
-                    throw e;
+                if (gitLabApiWrapper.isUserHasPermissionForProject(project.getId())) {
+                    try {
+                        deleteWebHooks(webhookListenerUrl, project);
+                        ProjectHook hook = new ProjectHook();
+                        hook.setJobEvents(true);
+                        hook.setPipelineEvents(true);
+                        gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
+                    } catch (GitLabApiException e) {
+                        log.warn("Failed to create a GitLab web hook", e);
+                        throw e;
+                    }
                 }
             }
         } catch (GitLabApiException e) {
@@ -78,9 +80,11 @@ public class GitlabServices {
             log.info("Destroying GitLab webhooks ...");
             URL serverBaseUrl = new URL(applicationSettings.getConfig().getServerBaseUrl());
             URL webhookListenerUrl = new URL(serverBaseUrl, "events");
-            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getOwnedProjects();
+            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
-                deleteWebHooks(webhookListenerUrl, project);
+                if (gitLabApiWrapper.isUserHasPermissionForProject(project.getId())) {
+                    deleteWebHooks(webhookListenerUrl, project);
+                }
             }
         } catch (Exception e) {
             log.warn("Failed to destroy GitLab webhooks", e);
@@ -130,24 +134,26 @@ public class GitlabServices {
         CIJobsList ciJobsList = dtoFactory.newDTO(CIJobsList.class);
         List<PipelineNode> list = new ArrayList<>();
         try {
-            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getOwnedProjects();
+            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
-                try {
-                    ParsedPath parseProject = new ParsedPath(project, gitLabApi);
-                    PipelineNode buildConf;
-                    if (parseProject.isMultiBranch()) {
-                        buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                .setJobCiId(parseProject.getFullPathOfPipeline().toLowerCase())
-                                .setName(parseProject.getFullPathOfProject())
-                                .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
-                    } else {
-                        buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                .setJobCiId(parseProject.getFullPathOfPipelineWithBranch().toLowerCase())
-                                .setName(parseProject.getFullPathOfProject());
+                if (gitLabApiWrapper.isUserHasPermissionForProject(project.getId())) {
+                    try {
+                        ParsedPath parseProject = new ParsedPath(project, gitLabApi);
+                        PipelineNode buildConf;
+                        if (parseProject.isMultiBranch()) {
+                            buildConf = dtoFactory.newDTO(PipelineNode.class)
+                                    .setJobCiId(parseProject.getFullPathOfPipeline().toLowerCase())
+                                    .setName(parseProject.getFullPathOfProject())
+                                    .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
+                        } else {
+                            buildConf = dtoFactory.newDTO(PipelineNode.class)
+                                    .setJobCiId(parseProject.getFullPathOfPipelineWithBranch().toLowerCase())
+                                    .setName(parseProject.getFullPathOfProject());
+                        }
+                        list.add(buildConf);
+                    } catch (Exception e) {
+                        log.warn("Failed to add some tags to the job list", e);
                     }
-                    list.add(buildConf);
-                } catch (Exception e) {
-                    log.warn("Failed to add some tags to the job list", e);
                 }
             }
         } catch (Exception e) {
@@ -169,7 +175,7 @@ public class GitlabServices {
                     .setJobCiId(project.getFullPathOfPipeline().toLowerCase())
                     .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
         }
-        project=new ParsedPath(buildId,gitLabApi,PathType.PIPELINE);
+        project = new ParsedPath(buildId, gitLabApi, PathType.PIPELINE);
         return dtoFactory.newDTO(PipelineNode.class)
                 .setJobCiId(project.getFullPathOfPipelineWithBranch().toLowerCase())
                 .setName(project.getCurrentBranchOrDefault());

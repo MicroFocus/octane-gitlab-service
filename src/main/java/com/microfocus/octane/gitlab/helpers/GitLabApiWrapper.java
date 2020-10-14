@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.ProxyClientConfig;
+import org.gitlab4j.api.models.AccessLevel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -67,7 +68,7 @@ public class GitLabApiWrapper {
         try {
             gitLabApi.getProjectApi().getOwnedProjects();
         } catch (GitLabApiException e) {
-            String message= "GitLab API failed to perform basic operations. Please validate GitLab properties - location, personalAccessToken(including token permissions/scopes in GitLab server)" +
+            String message = "GitLab API failed to perform basic operations. Please validate GitLab properties - location, personalAccessToken(including token permissions/scopes in GitLab server)" +
                     " if one of the end points doesnt required proxy, please put it on the non proxy hosts.";
             log.error(message);
             System.out.println(message);
@@ -77,6 +78,15 @@ public class GitLabApiWrapper {
 
     public GitLabApi getGitLabApi() {
         return gitLabApi;
+    }
+
+    public boolean isUserHasPermissionForProject(int projectId) {
+        try {
+            return gitLabApi.getProjectApi().getMember(projectId, gitLabApi.getUserApi().getCurrentUser().getId()).getAccessLevel().value >= AccessLevel.MAINTAINER.value;
+        } catch (GitLabApiException e) {
+            log.error("failed to get user permissions" + e.getMessage());
+        }
+        return false;
     }
 
 }
