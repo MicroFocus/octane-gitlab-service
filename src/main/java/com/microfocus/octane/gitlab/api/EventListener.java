@@ -87,7 +87,7 @@ public class EventListener {
                         ParsedPath parsedPath = new ParsedPath(event.getProject(), gitLabApi, PathType.PIPELINE);
                         if (parsedPath.isMultiBranch()) {
                             event.setProjectDisplayName(parsedPath.getFullPathOfProjectWithBranch());
-                            event.setParentCiId(parsedPath.getFullPathOfPipeline().toLowerCase()).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD);
+                            event.setParentCiId(parsedPath.getFullPathOfPipeline()).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD);
                         }
                     }
                 } else if (eventType == CIEventType.DELETED) {
