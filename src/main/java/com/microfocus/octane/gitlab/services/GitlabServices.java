@@ -55,7 +55,7 @@ public class GitlabServices {
         try {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
-                if (gitLabApiWrapper.isUserHasPermissionForProject(project.getId())) {
+                if (gitLabApiWrapper.isUserHasPermissionForProject(project)) {
                     try {
                         deleteWebHooks(webhookListenerUrl, project);
                         ProjectHook hook = new ProjectHook();
@@ -82,7 +82,7 @@ public class GitlabServices {
             URL webhookListenerUrl = new URL(serverBaseUrl, "events");
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
-                if (gitLabApiWrapper.isUserHasPermissionForProject(project.getId())) {
+                if (gitLabApiWrapper.isUserHasPermissionForProject(project)) {
                     deleteWebHooks(webhookListenerUrl, project);
                 }
             }
@@ -136,7 +136,7 @@ public class GitlabServices {
         try {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
-                if (gitLabApiWrapper.isUserHasPermissionForProject(project.getId())) {
+                if (gitLabApiWrapper.isUserHasPermissionForProject(project)) {
                     try {
                         ParsedPath parseProject = new ParsedPath(project, gitLabApi);
                         PipelineNode buildConf;
