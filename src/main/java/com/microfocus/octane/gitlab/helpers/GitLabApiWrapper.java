@@ -9,6 +9,9 @@ import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.ProxyClientConfig;
 import org.gitlab4j.api.models.AccessLevel;
+import org.gitlab4j.api.models.Member;
+import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -18,6 +21,7 @@ import javax.naming.ConfigurationException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.PREFIX;
 
@@ -80,9 +84,16 @@ public class GitLabApiWrapper {
         return gitLabApi;
     }
 
-    public boolean isUserHasPermissionForProject(int projectId) {
+    public boolean isUserHasPermissionForProject(Project project) {
         try {
-            return gitLabApi.getProjectApi().getMember(projectId, gitLabApi.getUserApi().getCurrentUser().getId()).getAccessLevel().value >= AccessLevel.MAINTAINER.value;
+            User currentUser = gitLabApi.getUserApi().getCurrentUser();
+            Optional<Member> currentMember = gitLabApi.getProjectApi().getAllMembers(project.getId()).stream().filter(member -> member.getId() == currentUser.getId()).findFirst();
+            if (currentMember.isPresent() && currentMember.get().getAccessLevel().value >= AccessLevel.MAINTAINER.value) {
+                return true;
+            } else {
+                log.info(currentUser.getName() + "doesnt have enough permission for project " + project.getPath());
+                return false;
+            }
         } catch (GitLabApiException e) {
             log.error("failed to get user permissions" + e.getMessage());
         }
