@@ -83,6 +83,12 @@ public class EventListener {
                     log.debug("Failed to trace an incoming event", e);
                 }
                 if (eventType == CIEventType.FINISHED || eventType == CIEventType.STARTED) {
+                    if (event.getProject().endsWith("/build")) {
+                        ParsedPath parsedPath = new ParsedPath(event.getProject().substring(0, event.getProject().length() - 6), gitLabApi, PathType.PROJECT);
+                        if (parsedPath.isMultiBranch()) {
+                            event.setSkipValidation(true);
+                        }
+                    }
                     if (event.getProject().contains("pipeline:")) {
                         ParsedPath parsedPath = new ParsedPath(event.getProject(), gitLabApi, PathType.PIPELINE);
                         if (parsedPath.isMultiBranch()) {
