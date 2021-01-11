@@ -9,6 +9,8 @@ import com.hp.octane.integrations.dto.general.CIPluginInfo;
 import com.hp.octane.integrations.dto.general.CIServerInfo;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.hp.octane.integrations.dto.tests.*;
+import com.hp.octane.integrations.services.configurationparameters.EncodeCiJobBase64Parameter;
+import com.hp.octane.integrations.services.configurationparameters.factory.ConfigurationParameterFactory;
 import com.microfocus.octane.gitlab.app.Application;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.*;
@@ -99,6 +101,7 @@ public class OctaneServices extends CIPluginServices {
                 result = OctaneConfiguration.createWithUiLocation(config.getCiServerIdentity(), config.getOctaneLocation());
                 result.setClient(config.getOctaneApiClientID());
                 result.setSecret(octaneApiClientSecret);
+                ConfigurationParameterFactory.addParameter(result, EncodeCiJobBase64Parameter.KEY, "true");
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
