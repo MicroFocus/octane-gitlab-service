@@ -135,9 +135,10 @@ public class EventListener {
         List<CIEvent> events = new ArrayList<>();
         CIEventType eventType = getEventType(obj);
         Integer buildCiId = getObjectId(obj);
-        Long startTime = getTime(obj, "started_at");
-        if (startTime == null) startTime = getTime(obj, "created_at");
+
         Object duration = getDuration(obj);
+        Long startTime = getStartTime(obj,duration);
+
         SCMData scmData = null;
         boolean isScmNull = true;
         if (isPipelineEvent(obj)) {
@@ -183,6 +184,19 @@ public class EventListener {
         }
 
         return events;
+    }
+
+    private Long getStartTime(JSONObject obj, Object duration) {
+
+        Long startTime = getTime(obj, "started_at");
+        if (startTime == null){
+           try {
+               startTime = getTime(obj, "finished_at") - Long.parseLong(duration.toString());
+           }catch (Exception e){
+               startTime = getTime(obj, "created_at");
+           }
+        }
+        return startTime;
     }
 
     private List<CIEventCause> getCauses(JSONObject obj, boolean isScmNull) {
