@@ -160,7 +160,7 @@ public class EventListener {
                 .setResult(eventType == CIEventType.STARTED || eventType == CIEventType.DELETED ? null : convertCiBuildResult(getStatus(obj)))
                 .setStartTime(startTime)
                 .setEstimatedDuration(null)
-                .setDuration(eventType == CIEventType.STARTED ? null : duration != null ? Math.round(duration instanceof Double ? (Double) duration : (Integer) duration) : null)
+                .setDuration(eventType == CIEventType.STARTED ? null : duration != null ? Math.round(duration instanceof Double ? 1000* (Double) duration : 1000 * (Integer) duration) : null)
                 .setScmData(null)
                 .setCauses(getCauses(obj, isScmNull))
                 .setPhaseType(isPipelineEvent(obj) ? PhaseType.POST : PhaseType.INTERNAL)
