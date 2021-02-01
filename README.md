@@ -1,8 +1,6 @@
 ![MICROFOCUS LOGO](https://upload.wikimedia.org/wikipedia/commons/4/4e/MicroFocus_logo_blue.png)
 
-Project status: [![Build status](https://ci.appveyor.com/api/projects/status/umvce8v9113dcxnt?svg=true)](https://ci.appveyor.com/project/mstekel/octane-gitlab-service/branch/master)
-
-Master release status: [![Build status](https://ci.appveyor.com/api/projects/status/umvce8v9113dcxnt/branch/master?svg=true)](https://ci.appveyor.com/project/mstekel/octane-gitlab-service/branch/master)
+Project status: [![Build status](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)
 
 ## Relevant links
 -	**Download the most recent LTS version of the service** at [Github releases](https://github.com/MicroFocus/octane-gitlab-service/releases)
