@@ -10,6 +10,27 @@ Project status: [![Build status](https://ci.appveyor.com/project/OctaneCIPlugins
 # ALM Octane GitLab CI service
 This service integrates ALM Octane with GitLab, enabling ALM Octane to display GitLab build pipelines and track build and test run results.
 
+
+#### Integration flow:
+
+The service communicates both with the GitLab server and the Octane server.
+Both sides of communication must be reachable. 
+
+##### Communication with Gitlab:
+* The service sends an API requests to GitLab server.  
+For example: check permission, get project list, get test results, run project.  
+
+* GitLab sends events to this service.  
+For example: start and finish running of project.  
+The service registers to events using the GitLab project webhook mechanism.
+
+##### Communication with Octane:
+The service uses the Octane [CI SDK](https://github.com/MicroFocus/octane-ci-java-sdk) for this.
+
+
+_**Note that this solution does not support GitLab on SaaS**_
+
+
 ## Installation and configuration instructions
 1. Create a new directory to serve as the installation target. This can be on any machine that can access GitLab. (If GitLab is behind a firewall, this machine must also be behind it.)
 2. Download the octane-gitlab-service-\<version\>.jar file from the release assets and copy it to the target directory.
@@ -25,6 +46,7 @@ server.port=9091
 # ALM Octane GitLab Service oriented properties
 # =========================================
 server.baseUrl=<mandatory: the base URL of this service, should be accessible by GitLab>
+server.webhook.route.url=<optional: URL of the service that can be exposed and is reachable from GitLab>
 ciserver.identity=<optional: CI server identity, by default a hash value generated from the service URL is used>
 octane.location=<mandatory: the URL of the ALM Octane server with the /ui path and the sharedspace parameters. Example: https://myserver:8080/ui?p=1005>
 octane.apiClientID=<mandatory: ALM Octane API client ID with CI/CD integration role over the target workspace(s)>
@@ -62,6 +84,10 @@ The base URL of this service, should be accessible by GitLab.
 Example:
 
     http://myServiceServer.myCompany.com:9091
+
+#### server.webhook.route.url
+If GitLab is in another network and can't access <server.baseUrl>\events, put here the accessible URL
+and route this **<server-based URL>\events** to **<server-based URL>\events**.
 
 #### ciserver.identity
 The identity of the GitLab server in the ALM Octane server. By default a hash value generated from the service URL is used.
@@ -128,6 +154,25 @@ The encrypted token that starts with 'AES:' can be directly copied (including th
 However, password encryption is optional. You can enter the password plain values directly.
 
 ## Troubleshooting
+
+### GitLab WebHooks
+
+If you can run the pipeline from Octane but cannot see progress and results:  
+Check the webhook from your project in GitLab (in GitLab go to: your project  settings  integration  test the webhooks for your service url: <service Url>\events)  
+If necessary, update the application.properties file with the correct server.baseurl value
+
+### Endpoint not accessible by GitLab
+
+If you are getting this error:  
+```
+GitlabServices: Error while accessing the '<service-url>/events' endpoint.  
+Note that this endpoint must be accessible by GitLab.
+```
+In the service we are running a test for the webhook URL, to see if can access to this endpoint.
+If this endpoint is not accessible please check your application.properties file.
+In case this URL is not accessible from GitLab (for example if GitLab is in a different network),  
+you can use the “server.webhook.route.url” property to fix your environment.
+ 
 
 ### GitLab Runner HTTP(S) proxy
 GitLab uses registered runners for running pipelines. Runners are registered as described in this article: https://docs.gitlab.com/runner/register/.

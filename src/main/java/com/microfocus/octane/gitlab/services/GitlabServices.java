@@ -49,8 +49,8 @@ public class GitlabServices {
 
     @PostConstruct
     private void init() throws MalformedURLException {
-        URL serverBaseUrl = new URL(applicationSettings.getConfig().getServerBaseUrl());
-        URL webhookListenerUrl = new URL(serverBaseUrl, "events");
+        URL webhookListenerUrl = getWebHookListenerURL();
+
         gitLabApi = gitLabApiWrapper.getGitLabApi();
         try {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
@@ -74,12 +74,21 @@ public class GitlabServices {
         }
     }
 
+    private URL getWebHookListenerURL() throws MalformedURLException {
+        URL serverBaseUrl = applicationSettings.getConfig().getServerWebhookRouteUrl() != null?
+                new URL(applicationSettings.getConfig().getServerWebhookRouteUrl()) :
+                new URL(applicationSettings.getConfig().getServerBaseUrl());
+
+        URL webhookListenerUrl = new URL(serverBaseUrl, "events");
+        return webhookListenerUrl;
+    }
+
     @PreDestroy
     private void stop() {
         try {
             log.info("Destroying GitLab webhooks ...");
-            URL serverBaseUrl = new URL(applicationSettings.getConfig().getServerBaseUrl());
-            URL webhookListenerUrl = new URL(serverBaseUrl, "events");
+            URL webhookListenerUrl = getWebHookListenerURL();
+
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             for (Project project : projects) {
                 if (gitLabApiWrapper.isUserHasPermissionForProject(project)) {
@@ -107,7 +116,14 @@ public class GitlabServices {
     private void validateEventsAPIAvailability() throws MalformedURLException {
         URL serverBaseUrl = new URL(applicationSettings.getConfig().getServerBaseUrl());
         URL webhookListenerUrl = new URL(serverBaseUrl, "events");
-        final String warning = String.format("Error while accessing the '%s' endpoint. Note that this endpoint must be accessible by GitLab.", webhookListenerUrl.toString());
+        String warning = String.format("Error while accessing the '%s' endpoint. Note that this endpoint must be accessible by GitLab.", webhookListenerUrl.toString());
+
+        if(applicationSettings.getConfig().getServerWebhookRouteUrl()!=null){
+            URL webhookRouteUrl = new URL(new URL(applicationSettings.getConfig().getServerWebhookRouteUrl()), "events");
+            warning = String.format("Error while accessing the '%s' endpoint. Note that you should route '%s' to this endpoint, and this endpoint must be accessible",
+                    webhookListenerUrl.toString(),webhookRouteUrl.toString());
+        }
+
         try {
             CloseableHttpClient httpclient = HttpClients.createSystem();
             HttpGet httpGet = new HttpGet(webhookListenerUrl.toString());
@@ -118,15 +134,15 @@ public class GitlabServices {
                     final String success = String.format("Success while accessing the '%s' endpoint.", webhookListenerUrl.toString());
                     log.info(success);
                 } else {
-                    log.warn(warning);
+                    log.error(warning);
                 }
             } else {
-                log.warn(warning);
+                log.error(warning);
             }
             response.close();
             httpclient.close();
         } catch (Exception e) {
-            log.warn(warning, e);
+            log.error(warning, e);
         }
     }
 

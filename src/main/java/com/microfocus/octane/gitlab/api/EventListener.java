@@ -369,7 +369,12 @@ public class EventListener {
             String time = isPipelineEvent(obj) ? obj.getJSONObject("object_attributes").getString(attrName) : obj.getString("build_" + attrName);
             return time == null ? null : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.ENGLISH).parse(time).getTime();
         } catch (Exception e) {
-            log.warn("Failed to return the '" + attrName + "' of the job, using null as default.");
+            String message = "Failed to return the '" + attrName + "' of the job, using null as default.";
+            if (log.isDebugEnabled()) {
+                log.debug(message, e);
+            } else {
+                log.warn(message);
+            }
             return null;
         }
     }

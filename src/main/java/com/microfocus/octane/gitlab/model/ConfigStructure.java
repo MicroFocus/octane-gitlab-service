@@ -2,8 +2,6 @@ package com.microfocus.octane.gitlab.model;
 
 import com.microfocus.octane.gitlab.helpers.Pair;
 import org.apache.commons.codec.binary.Hex;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URLEncodedUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
@@ -11,14 +9,9 @@ import org.springframework.util.DigestUtils;
 import javax.annotation.PostConstruct;
 import javax.validation.ValidationException;
 import java.lang.reflect.Field;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
@@ -44,6 +37,9 @@ public class ConfigStructure {
 
     @Value("${gitlab.testResultsFilePattern:**.xml}")
     private String gitlabTestResultsFilePattern;
+
+    @Value("${server.webhook.route.url:#{null}}")
+    private  String serverWebhookRouteUrl;
 
     @Value("${server.baseUrl:#{null}}")
     private String serverBaseUrl;
@@ -97,6 +93,9 @@ public class ConfigStructure {
         return serverBaseUrl;
     }
 
+    public String getServerWebhookRouteUrl(){
+        return serverWebhookRouteUrl;
+    }
     public String getCiServerIdentity() {
         String val = !isNullOrSpaceOrEmpty(ciServerIdentity) ? ciServerIdentity : Hex.encodeHexString(DigestUtils.md5Digest(serverBaseUrl.getBytes()));
         return val.substring(0, Math.min(255, val.length()));
