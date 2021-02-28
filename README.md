@@ -11,12 +11,12 @@ Project status: [![Build status](https://ci.appveyor.com/project/OctaneCIPlugins
 This service integrates ALM Octane with GitLab, enabling ALM Octane to display GitLab build pipelines and track build and test run results.
 
 
-####Integration flow:
+#### Integration flow:
 
 The service communicates both with the GitLab server and the Octane server.
 Both sides of communication must be reachable. 
 
-#####Communication with Gitlab:
+##### Communication with Gitlab:
 * The service sends an API requests to GitLab server.  
 For example: check permission, get project list, get test results, run project.  
 
@@ -24,7 +24,7 @@ For example: check permission, get project list, get test results, run project.
 For example: start and finish running of project.  
 The service registers to events using the GitLab project webhook mechanism.
 
-#####Communication with Octane:
+##### Communication with Octane:
 The service uses the Octane [CI SDK](https://github.com/MicroFocus/octane-ci-java-sdk) for this.
 
 
