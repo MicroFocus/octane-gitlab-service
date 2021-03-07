@@ -14,6 +14,7 @@ public class ParsedPath {
     private Project project;
     private String groups;
     private String displayName;
+    private String pathWithNameSpace;
     private List<Branch> branches;
     private String currentBranch;
     private int id;
@@ -44,6 +45,7 @@ public class ParsedPath {
         gitlabApi = gitLabApi;
         this.groups = project.getNamespace().getFullPath();
         this.displayName = project.getName();
+        this.pathWithNameSpace = project.getPathWithNamespace();
         this.id = project.getId();
     }
 
@@ -52,12 +54,17 @@ public class ParsedPath {
         return branches != null ? branches.size() > 1 : false;
     }
 
+    public String getPathWithNameSpace() {
+       // return groups + "/" + displayName;
+       return (this.pathWithNameSpace!= null ? this.pathWithNameSpace : this.getFullPathOfProject());
+    }
+
     public String getFullPathOfProject() {
         return groups + "/" + displayName;
     }
 
     public String getFullPathOfProjectWithBranch() {
-        return getFullPathOfProject() + "/" + getCurrentBranchOrDefault();
+        return getPathWithNameSpace() + "/" + getCurrentBranchOrDefault();
     }
 
     public String getFullPathOfPipelineWithBranch() {
@@ -65,7 +72,7 @@ public class ParsedPath {
     }
 
     public String getFullPathOfPipeline() {
-        return "pipeline:" + groups + "/" + displayName;
+        return "pipeline:" + getPathWithNameSpace();
     }
 
     public static String cutPipelinePrefix(String jobCiId) {
@@ -91,9 +98,9 @@ public class ParsedPath {
     public List<Branch> getBranches() {
         if (branches == null) {
             try {
-                branches = gitlabApi.getRepositoryApi().getBranches(this.getFullPathOfProject());
+                branches = gitlabApi.getRepositoryApi().getBranches( this.getPathWithNameSpace());
             } catch (GitLabApiException e) {
-                log.error("failed while getting branches from " + this.getFullPathOfProject());
+                log.error("failed while getting branches from " + this.getPathWithNameSpace(), e);
             }
         }
         return branches;
@@ -102,10 +109,10 @@ public class ParsedPath {
     public int getId() {
         if (project == null) {
             try {
-                this.project = gitlabApi.getProjectApi().getProject(this.getFullPathOfProject());
+                this.project = gitlabApi.getProjectApi().getProject(this.getPathWithNameSpace());
                 this.id = project.getId();
             } catch (Exception e) {
-                log.error("failed while getting project from " + this.getFullPathOfProject());
+                log.error("failed while getting project from " + this.getPathWithNameSpace());
             }
         }
         return id;

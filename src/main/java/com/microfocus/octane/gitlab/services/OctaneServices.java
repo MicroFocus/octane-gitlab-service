@@ -190,7 +190,7 @@ public class OctaneServices extends CIPluginServices {
     public void runPipeline(String jobCiId, String originalBody) {
         try {
             ParsedPath parsedPath = new ParsedPath(jobCiId, gitLabApi, PathType.PIPELINE);
-            gitLabApi.getPipelineApi().createPipeline(parsedPath.getFullPathOfProject(), parsedPath.getCurrentBranchOrDefault());
+            gitLabApi.getPipelineApi().createPipeline(parsedPath.getPathWithNameSpace(), parsedPath.getCurrentBranchOrDefault());
         } catch (GitLabApiException e) {
             log.error("Failed to start a pipeline", e);
             throw new RuntimeException(e);
@@ -202,10 +202,10 @@ public class OctaneServices extends CIPluginServices {
         TestsResult result = dtoFactory.newDTO(TestsResult.class);
         try {
             ParsedPath project = new ParsedPath(ParsedPath.cutLastPartOfPath(jobFullName), gitLabApi, PathType.PROJECT);
-            Job job = gitLabApi.getJobApi().getJob(project.getFullPathOfProject(), Integer.parseInt(buildNumber));
+            Job job = gitLabApi.getJobApi().getJob(project.getPathWithNameSpace(), Integer.parseInt(buildNumber));
             BuildContext buildContext = dtoFactory.newDTO(BuildContext.class)
                     .setJobId(project.getFullPathOfProjectWithBranch().toLowerCase())
-                    .setJobName(project.getFullPathOfProject())
+                    .setJobName(project.getPathWithNameSpace())
                     .setBuildId(job.getId().toString())
                     .setBuildName(job.getId().toString())
                     .setServerId(applicationSettings.getConfig().getCiServerIdentity());
