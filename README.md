@@ -24,6 +24,10 @@ For example: check permission, get project list, get test results, run project.
 For example: start and finish running of project.  
 The service registers to events using the GitLab project webhook mechanism.
 
+_**Note that if the service is down or unavailable, the data will be lost and not displayed in ALM Octane.**_  
+
+
+
 ##### Communication with Octane:
 The service uses the Octane [CI SDK](https://github.com/MicroFocus/octane-ci-java-sdk) for this.
 
