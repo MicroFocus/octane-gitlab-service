@@ -124,9 +124,9 @@ public class OctaneServices extends CIPluginServices {
         try {
             CIProxyConfiguration result = null;
             if (ProxyHelper.isProxyNeeded(applicationSettings, targetUrl)) {
-                if(log.isDebugEnabled()){
-                    log.debug("proxy is required for host " + targetUrl);
-                }
+
+                log.debug("proxy is required for host " + targetUrl);
+
                 ConfigStructure config = applicationSettings.getConfig();
                 String protocol = targetUrl.getProtocol();
                 URL proxyUrl = new URL(config.getProxyField(protocol, "proxyUrl"));

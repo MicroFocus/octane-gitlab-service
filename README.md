@@ -159,6 +159,14 @@ However, password encryption is optional. You can enter the password plain value
 
 ## Troubleshooting
 
+### Multi-Branch 
+
+If you create a pipeline with one branch, and then add branches, ALM Octane will not reflect this change.  
+In this case, delete the original pipeline and create a new one for the multibranch plan.
+### Can not see the project in the job list of Octane
+
+The project must contain files and not be empty. Make sure there is at least one branch in your GitLab project.
+
 ### GitLab WebHooks
 
 If you can run the pipeline from Octane but cannot see progress and results:  
