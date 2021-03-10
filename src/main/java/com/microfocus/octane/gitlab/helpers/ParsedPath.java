@@ -119,7 +119,15 @@ public class ParsedPath {
     }
 
     public String getCurrentBranchOrDefault() {
-        return currentBranch == null ? getBranches().get(0).getName() : currentBranch;
+        if(currentBranch!= null)
+            return currentBranch;
+
+        if(getBranches().size()>0){
+            return getBranches().get(0).getName();
+        }else{
+             throw new ArrayIndexOutOfBoundsException ("there is not branches for this project, the project is empty:"+this.displayName);
+        }
+
     }
 
     public String getCurrentBranch() {

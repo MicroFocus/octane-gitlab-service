@@ -93,7 +93,7 @@ public class GitLabApiWrapper {
             if (currentMember.isPresent() && currentMember.get().getAccessLevel().value >= AccessLevel.MAINTAINER.value) {
                 return true;
             } else {
-                log.info(currentUser.getName() + "doesnt have enough permission for project " + project.getPath());
+                log.info(currentUser.getName() + " doesnt have enough permission for project " + project.getPath());
                 return false;
             }
         } catch (GitLabApiException e) {
