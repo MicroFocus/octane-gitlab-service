@@ -79,25 +79,25 @@ java –jar octane-gitlab-service-<version>.jar
 
 ### Properties information:
 
-#### server.port
+##### server.port
 The TCP port for this service to listen on.
 
-#### server.baseUrl
+##### server.baseUrl
 The base URL of this service, should be accessible by GitLab.
 
 Example:
 
     http://myServiceServer.myCompany.com:9091
 
-#### server.webhook.route.url
+##### server.webhook.route.url
 If GitLab is in another network and can't access <server.baseUrl>\events, put here the accessible URL
 and route this **<server-based URL>\events** to **<server-based URL>\events**.
 
-#### ciserver.identity
+##### ciserver.identity
 The identity of the GitLab server in the ALM Octane server. By default a hash value generated from the service URL is used.
 Overriding this property is useful for preserving the CI server identity while migrating GitLab to another location.
 
-#### octane.location
+##### octane.location
 The URL of the ALM Octane server, using its fully qualified domain name (FQDN).
 
 Use the following format (port number is optional):
@@ -156,6 +156,9 @@ Encrypted token: AES:oLPF209dEPuL69RUxfG6Wg==:HOsPY6YTUj2OG5aVNtp/xQ==
 
 The encrypted token that starts with 'AES:' can be directly copied (including the 'AES:' prefix) to the *'application.properties'* file.
 However, password encryption is optional. You can enter the password plain values directly.
+## SSL port
+[How to configure the service with SSL port ](https://mkyong.com/spring-boot/spring-boot-ssl-https-examples/)  
+
 
 ## Troubleshooting
 
