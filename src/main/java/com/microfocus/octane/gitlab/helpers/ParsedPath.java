@@ -100,7 +100,11 @@ public class ParsedPath {
             try {
                 branches = gitlabApi.getRepositoryApi().getBranches( this.getPathWithNameSpace());
             } catch (GitLabApiException e) {
-                log.error("failed while getting branches from " + this.getPathWithNameSpace(), e);
+                if (log.isDebugEnabled()) {
+                    log.debug("failed while getting branches from " + this.getPathWithNameSpace(), e);
+                } else {
+                    log.warn("failed while getting branches from " + this.getPathWithNameSpace());
+                }
             }
         }
         return branches;
