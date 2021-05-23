@@ -267,3 +267,28 @@ If the GitLab server and the octane-gitlab-service app both run on the same netw
 - Open the [your_gitlab_server]/admin/application_settings page.
 - In the “Outbound requests” section, check the "Allow requests to the local network from hooks and services" checkbox.
 
+### SSL error 
+If getting the following error in the log:
+"javax.net.ssl.SSLHandshakeException: sun.security.validator.ValidatorException: PKIX path building failed:   
+sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target"
+- in case the service run with open-jdk please try to run with official java (from Oracle site)
+- try to install the certificate manually:  
+example from customer process: 
+```
+# add ca cert
+cd /usr/share/your-server/jre/lib/security
+/usr/share/your-server/jre/bin/keytool -import -storepass changeit -noprompt -alias cacert -keystore cacerts -trustcacerts -file /tmp/certificadoOctane.cer
+ 
+# add octane\gitlab server cert
+cd /usr/share/your-server/jre/lib/security
+/usr/share/your-server/jre/bin/keytool -import -storepass changeit -noprompt -alias octane-cert -keystore cacerts -trustcacerts -file /tmp/octanecielo.crt
+ 
+# check if java is using the right ca/cert
+cd /tmp
+[root@ip-172-xxx-xxx-xxx tmp]# wget https://confluence.atlassian.com/download/attachments/225122392/SSLPoke.class?version=1&modificationDate=1288204937304&api=v2
+[root@ip-172-xxx-xxx-xxx tmp]# mv SSLPoke.class\?version\=1 SSLPoke.class
+ 
+[root@ip-172-xxx-xxx-xxx tmp]# java -Djavax.net.ssl.trustStore=/usr/share/your-server/jre/lib/security/cacerts  SSLPoke octanecielo.enterprisetrn.hdevelo.com.br 443
+Successfully connected
+Procedure
+```
