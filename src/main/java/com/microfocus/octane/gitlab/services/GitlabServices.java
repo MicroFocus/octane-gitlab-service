@@ -17,8 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
-import org.gitlab4j.api.models.Project;
-import org.gitlab4j.api.models.ProjectHook;
+import org.gitlab4j.api.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Scope;
@@ -54,8 +53,10 @@ public class GitlabServices {
         gitLabApi = gitLabApiWrapper.getGitLabApi();
         try {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
+            User currentUser = gitLabApi.getUserApi().getCurrentUser();
+
             for (Project project : projects) {
-                if (gitLabApiWrapper.isUserHasPermissionForProject(project)) {
+                if (gitLabApiWrapper.isUserHasPermissionForProject(project,currentUser)) {
                     try {
                         deleteWebHooks(webhookListenerUrl, project);
                         ProjectHook hook = new ProjectHook();
@@ -90,8 +91,9 @@ public class GitlabServices {
             URL webhookListenerUrl = getWebHookListenerURL();
 
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
+            User currentUser = gitLabApi.getUserApi().getCurrentUser();
             for (Project project : projects) {
-                if (gitLabApiWrapper.isUserHasPermissionForProject(project)) {
+                if (gitLabApiWrapper.isUserHasPermissionForProject(project,currentUser)) {
                     deleteWebHooks(webhookListenerUrl, project);
                 }
             }
@@ -149,10 +151,15 @@ public class GitlabServices {
     CIJobsList getJobList() {
         CIJobsList ciJobsList = dtoFactory.newDTO(CIJobsList.class);
         List<PipelineNode> list = new ArrayList<>();
+        String projectNames ="";
         try {
-            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
-            for (Project project : projects) {
-                if (gitLabApiWrapper.isUserHasPermissionForProject(project)) {
+            ProjectFilter filter = new ProjectFilter();
+            filter.withMinAccessLevel(AccessLevel.MAINTAINER);
+            List<Project> projectsFilters = gitLabApi.getProjectApi().getProjects(filter);
+            log.info("There are only "+ projectsFilters.size() +" projects with access level => MAINTAINER for the integrated user");
+
+
+            for (Project project : projectsFilters) {
                     try {
                         ParsedPath parseProject = new ParsedPath(project, gitLabApi);
                         PipelineNode buildConf;
@@ -166,16 +173,18 @@ public class GitlabServices {
                                     .setJobCiId(parseProject.getFullPathOfPipelineWithBranch().toLowerCase())
                                     .setName(parseProject.getFullPathOfProject());
                         }
+                        projectNames = projectNames + buildConf.getName()+",";
                         list.add(buildConf);
                     } catch (Exception e) {
                         log.warn("Failed to add some tags to the job list", e);
                     }
                 }
-            }
+
         } catch (Exception e) {
             log.warn("Failed to add some jobs to the job list", e);
         }
 
+        log.info("getJobList results:"+projectNames);
         ciJobsList.setJobs(list.toArray(new PipelineNode[list.size()]));
         return ciJobsList;
     }

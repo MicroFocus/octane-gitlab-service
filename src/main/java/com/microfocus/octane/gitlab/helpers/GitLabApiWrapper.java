@@ -84,9 +84,8 @@ public class GitLabApiWrapper {
         return gitLabApi;
     }
 
-    public boolean isUserHasPermissionForProject(Project project) {
+    public boolean isUserHasPermissionForProject(Project project,User currentUser) {
         try {
-            User currentUser = gitLabApi.getUserApi().getCurrentUser();
             Optional<Member> currentMember = gitLabApi.getProjectApi().getAllMembers(project.getId())
                     .stream().filter(member -> member.getId().equals(currentUser.getId())).findFirst();
 
