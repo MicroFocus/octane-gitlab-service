@@ -7,6 +7,7 @@ import com.hp.octane.integrations.dto.configuration.CIProxyConfiguration;
 import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.general.CIPluginInfo;
 import com.hp.octane.integrations.dto.general.CIServerInfo;
+import com.hp.octane.integrations.dto.parameters.CIParameters;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.hp.octane.integrations.dto.tests.*;
 import com.hp.octane.integrations.services.configurationparameters.EncodeCiJobBase64Parameter;
@@ -189,10 +190,15 @@ public class OctaneServices extends CIPluginServices {
 //
 
     @Override
-    public void runPipeline(String jobCiId, String originalBody) {
+    public void runPipeline(String jobCiId, CIParameters ciParameters) {
         try {
             ParsedPath parsedPath = new ParsedPath(jobCiId, gitLabApi, PathType.PIPELINE);
-            gitLabApi.getPipelineApi().createPipeline(parsedPath.getPathWithNameSpace(), parsedPath.getCurrentBranchOrDefault());
+
+            gitLabApi.getPipelineApi().createPipeline(
+                    parsedPath.getPathWithNameSpace(),
+                    parsedPath.getCurrentBranchOrDefault(),
+                    VariablesHelper.convertParametersToVariables(ciParameters));
+
         } catch (GitLabApiException e) {
             log.error("Failed to start a pipeline", e);
             throw new RuntimeException(e);

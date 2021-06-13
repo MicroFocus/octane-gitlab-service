@@ -3,6 +3,8 @@ package com.microfocus.octane.gitlab.services;
 import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.events.MultiBranchType;
 import com.hp.octane.integrations.dto.general.CIJobsList;
+import com.hp.octane.integrations.dto.parameters.CIParameter;
+import com.hp.octane.integrations.dto.parameters.CIParameterType;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
@@ -173,6 +175,7 @@ public class GitlabServices {
                                     .setJobCiId(parseProject.getFullPathOfPipelineWithBranch().toLowerCase())
                                     .setName(parseProject.getFullPathOfProject());
                         }
+                        buildConf.setParameters(getParameters(parseProject,this.gitLabApi));
                         projectNames = projectNames + buildConf.getName()+",";
                         list.add(buildConf);
                     } catch (Exception e) {
@@ -198,11 +201,48 @@ public class GitlabServices {
         if (project.isMultiBranch()) {
             return dtoFactory.newDTO(PipelineNode.class)
                     .setJobCiId(project.getFullPathOfPipeline().toLowerCase())
-                    .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
+                    .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT)
+                    .setParameters(getParameters(project,this.gitLabApi));
         }
         project = new ParsedPath(buildId, gitLabApi, PathType.PIPELINE);
         return dtoFactory.newDTO(PipelineNode.class)
                 .setJobCiId(project.getFullPathOfPipelineWithBranch().toLowerCase())
-                .setName(project.getCurrentBranchOrDefault());
+                .setName(project.getCurrentBranchOrDefault())
+                .setParameters(getParameters(project,this.gitLabApi));
+    }
+
+    public List<CIParameter> getParameters(ParsedPath project, GitLabApi gitLabApi) {
+        List<CIParameter> list = new ArrayList<>();
+
+        //get variables that was configured on group
+        List<Variable> variablesOnProject =getVariables(project,gitLabApi);
+        //get variables that was configured on group
+       //     List<Variable> variables = gitLabApi.getGroupApi().getVariables(project..getFullPathOfProject());
+            //get variables that was configured on gitlab instance
+
+        variablesOnProject.forEach(var -> {
+            CIParameter param = dtoFactory.newDTO(CIParameter.class);
+            param.setType(CIParameterType.STRING);
+            param.setName(var.getKey());
+            param.setDefaultValue(var.getValue());
+            list.add(param);
+        });
+
+        return list;
+    }
+
+    public static List<Variable> getVariables(ParsedPath project, GitLabApi gitLabApi){
+        List<Variable> variablesOnProject = new ArrayList<>();
+        if(project == null || project.getFullPathOfProject() == null){
+            return variablesOnProject;
+        }
+        try {
+            variablesOnProject = gitLabApi.getProjectApi().getVariables(project.getFullPathOfProject());
+
+        } catch (GitLabApiException e){
+            log.error("can not find any variables for the project:"+project.getDisplayName());
+        }
+
+        return variablesOnProject;
     }
 }
