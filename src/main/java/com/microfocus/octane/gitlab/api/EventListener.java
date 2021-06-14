@@ -18,7 +18,6 @@ import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.ParsedPath;
 import com.microfocus.octane.gitlab.helpers.PathType;
 import com.microfocus.octane.gitlab.helpers.VariablesHelper;
-import com.microfocus.octane.gitlab.services.GitlabServices;
 import com.microfocus.octane.gitlab.services.OctaneServices;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -104,7 +103,7 @@ public class EventListener {
                         List<CIParameter> parametersList = new ArrayList<>();
                         JSONArray variablesList = VariablesHelper.getVariablesListFromPipelineEvent(obj);
                         //check if this parameter is in job level:
-                        List<Variable> allVariables = GitlabServices.getVariables(parsedPath,gitLabApi);
+                        List<Variable> allVariables = VariablesHelper.getVariables(parsedPath,gitLabApi,applicationSettings);
 
                         variablesList.forEach(var -> {
                             boolean shouldReport = allVariables.stream()
