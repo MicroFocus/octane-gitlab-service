@@ -9,6 +9,7 @@ import com.hp.octane.integrations.dto.events.CIEvent;
 import com.hp.octane.integrations.dto.events.CIEventType;
 import com.hp.octane.integrations.dto.events.MultiBranchType;
 import com.hp.octane.integrations.dto.events.PhaseType;
+import com.hp.octane.integrations.dto.parameters.CIParameter;
 import com.hp.octane.integrations.dto.scm.*;
 import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
 import com.hp.octane.integrations.dto.tests.TestRun;
@@ -16,15 +17,14 @@ import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.ParsedPath;
 import com.microfocus.octane.gitlab.helpers.PathType;
+import com.microfocus.octane.gitlab.helpers.VariablesHelper;
 import com.microfocus.octane.gitlab.services.OctaneServices;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
-import org.gitlab4j.api.models.CompareResults;
-import org.gitlab4j.api.models.Diff;
-import org.gitlab4j.api.models.Job;
-import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.*;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -83,19 +83,41 @@ public class EventListener {
                     log.debug("Failed to trace an incoming event", e);
                 }
                 if (eventType == CIEventType.FINISHED || eventType == CIEventType.STARTED) {
+                    ParsedPath parsedPath =null;
                     if (event.getProject().endsWith("/build")) {
-                        ParsedPath parsedPath = new ParsedPath(event.getProject().substring(0, event.getProject().length() - 6), gitLabApi, PathType.PROJECT);
+                        parsedPath = new ParsedPath(event.getProject().substring(0, event.getProject().length() - 6), gitLabApi, PathType.PROJECT);
                         if (parsedPath.isMultiBranch()) {
                             event.setSkipValidation(true);
                         }
                     }
                     if (event.getProject().contains("pipeline:")) {
-                        ParsedPath parsedPath = new ParsedPath(event.getProject(), gitLabApi, PathType.PIPELINE);
+                        parsedPath = new ParsedPath(event.getProject(), gitLabApi, PathType.PIPELINE);
                         if (parsedPath.isMultiBranch()) {
                             event.setProjectDisplayName(parsedPath.getFullPathOfProjectWithBranch());
                             event.setParentCiId(parsedPath.getFullPathOfPipeline()).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
                         }
+
                     }
+
+                    if(isPipelineEvent(obj)){
+                        List<CIParameter> parametersList = new ArrayList<>();
+                        JSONArray variablesList = VariablesHelper.getVariablesListFromPipelineEvent(obj);
+                        //check if this parameter is in job level:
+                        List<Variable> allVariables = VariablesHelper.getVariables(parsedPath,gitLabApi,applicationSettings);
+
+                        variablesList.forEach(var -> {
+                            boolean shouldReport = allVariables.stream()
+                                    .filter(o -> (o.getKey().equals(((JSONObject)var).get("key")))).findFirst().isPresent();
+                            if(shouldReport){
+                                parametersList.add(VariablesHelper.convertVariableToParameter(var));
+                            }
+                        });
+
+                        if(parametersList.size() >0) {
+                            event.setParameters(parametersList);
+                        }
+                    }
+
                 } else if (eventType == CIEventType.DELETED) {
                     OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(event));
                 }

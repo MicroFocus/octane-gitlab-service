@@ -8,6 +8,7 @@ import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Project;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ParsedPath {
@@ -20,6 +21,24 @@ public class ParsedPath {
     private int id;
     private GitLabApi gitlabApi;
     private static final Logger log = LogManager.getLogger(ParsedPath.class);
+
+    public static List<String> getGroupFullPathFromProject(String fullPathOfProject) {
+        List<String> groupFullPath = new ArrayList<>();
+
+        while (fullPathOfProject.length()>0){
+            try{
+                int index = fullPathOfProject.lastIndexOf("/");
+                if(index >=0){
+                    fullPathOfProject = fullPathOfProject.substring(0,fullPathOfProject.lastIndexOf("/"));
+                    groupFullPath.add(fullPathOfProject);
+                }
+            } catch (StringIndexOutOfBoundsException e){
+                fullPathOfProject ="";
+            }
+
+        }
+        return groupFullPath;
+    }
 
     private void init(String path, PathType pathType) {
         switch (pathType) {

@@ -68,6 +68,9 @@ public class ConfigStructure {
     @Value("${https.nonProxyHosts:#{null}}")
     private String httpsNonProxyHosts;
 
+    @Value("${gitlab.variables.pipeline.usage:#{null}}")
+    private String[] gitlabVariablesPipelineUsage;
+
     @PostConstruct
     public void init() {
         List<Map.Entry<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
@@ -96,6 +99,14 @@ public class ConfigStructure {
     public String getServerWebhookRouteUrl(){
         return serverWebhookRouteUrl;
     }
+
+    public List<String> getGitlabVariablesPipelineUsage(){
+        if(gitlabVariablesPipelineUsage == null){
+            return new ArrayList<>();
+        }
+        return Arrays.asList(gitlabVariablesPipelineUsage);
+    }
+
     public String getCiServerIdentity() {
         String val = !isNullOrSpaceOrEmpty(ciServerIdentity) ? ciServerIdentity : Hex.encodeHexString(DigestUtils.md5Digest(serverBaseUrl.getBytes()));
         return val.substring(0, Math.min(255, val.length()));
