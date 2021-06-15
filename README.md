@@ -59,7 +59,7 @@ gitlab.location=<mandatory: the base URL of the GitLab server>
 gitlab.personalAccessToken=<sensitive,mandatory: GitLab personal access token>
 gitlab.testResultsFilePattern=<optional: 'glob:pattern' or 'regex:pattern' pattern for finding the test result files inside GitLab job artifact ZIP>.
 For complete documentation of the applicable patterns see https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileSystem.html#getPathMatcher-java.lang.String-
-
+gitlab.variables.pipeline.usage=<optional: comma separated list of project,groups,instance>
 
 # HTTP(S) proxy oriented properties
 # =================================
