@@ -4,7 +4,7 @@ import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.parameters.CIParameter;
 import com.hp.octane.integrations.dto.parameters.CIParameterType;
 import com.hp.octane.integrations.dto.parameters.CIParameters;
-import com.microfocus.octane.gitlab.app.ApplicationSettings;
+import com.microfocus.octane.gitlab.model.ConfigStructure;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
@@ -56,14 +56,14 @@ public class VariablesHelper {
         return variables;
     }
 
-    public static List<Variable> getVariables(ParsedPath project, GitLabApi gitLabApi, ApplicationSettings applicationSettings){
+    public static List<Variable> getVariables(ParsedPath project, GitLabApi gitLabApi, ConfigStructure appConfig){
         List<Variable> variables = new ArrayList<>();
         if(project == null || project.getFullPathOfProject() == null){
             return variables;
         }
         try{
-            List<String> variablesUsage = applicationSettings.getConfig().getGitlabVariablesPipelineUsage();
-            log.info("getting all defined variables on "+variablesUsage.toString());
+            List<String> variablesUsage = appConfig.getGitlabVariablesPipelineUsage();
+            log.info("getting all defined variables from levels: "+variablesUsage.toString() + ", on project: "+ project.getPathWithNameSpace()) ;
 
             if(variablesUsage.isEmpty() || variablesUsage.contains(VARS_ON_PROJECT) ){
                 List<Variable> variablesOnProject = gitLabApi.getProjectApi().getVariables(project.getPathWithNameSpace());
@@ -79,15 +79,29 @@ public class VariablesHelper {
 
             }
 
-//            if(variablesUsage.contains("instance")){
-//                List<Variable> variablesOnInstance = gitLabApi.getGroupApi().getVariables(project.getFullPathOfProject());
-//                variables.addAll(variablesOnInstance);
-//            }
+            if(variablesUsage.contains(VARS_ON_INSTANCE)){//supported only from gitlab 13
+                GitLabAPiClientImpl apiClient = new GitLabAPiClientImpl(appConfig.getGitlabLocation(), appConfig.getGitlabPersonalAccessToken());
+
+                List<Variable> variablesOnInstance =  apiClient.getInstanceVariables();
+                variables.addAll(variablesOnInstance);
+            }
 
         } catch (GitLabApiException e){
-            log.error("can not find any variables for the project:"+project.getDisplayName());
+            log.error("can not find variables for the project:"+project.getDisplayName());
         } finally {
             return variables;
         }
+    }
+
+    public static List<Variable> convertJSONArrayToVariables(JSONArray jsonVariablesList) {
+        List<Variable> variableList = new ArrayList<>();
+        jsonVariablesList.forEach(variable -> {
+            Variable var = new Variable();
+            var.setKey(((JSONObject) variable).getString("key"));
+            var.setValue(((JSONObject) variable).getString("value"));
+            //     var.setProtected(((JSONObject) variable).getString("protected"));
+            variableList.add(var);
+        });
+        return variableList;
     }
 }

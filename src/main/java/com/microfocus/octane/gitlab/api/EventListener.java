@@ -103,7 +103,7 @@ public class EventListener {
                         List<CIParameter> parametersList = new ArrayList<>();
                         JSONArray variablesList = VariablesHelper.getVariablesListFromPipelineEvent(obj);
                         //check if this parameter is in job level:
-                        List<Variable> allVariables = VariablesHelper.getVariables(parsedPath,gitLabApi,applicationSettings);
+                        List<Variable> allVariables = VariablesHelper.getVariables(parsedPath,gitLabApi,applicationSettings.getConfig());
 
                         variablesList.forEach(var -> {
                             boolean shouldReport = allVariables.stream()

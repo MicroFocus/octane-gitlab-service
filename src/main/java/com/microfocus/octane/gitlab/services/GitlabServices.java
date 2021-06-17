@@ -214,7 +214,7 @@ public class GitlabServices {
 
     public List<CIParameter> getParameters(ParsedPath project) {
         List<CIParameter> parametersList = new ArrayList<>();
-        List<Variable> projectVariables = VariablesHelper.getVariables(project,gitLabApi,applicationSettings);
+        List<Variable> projectVariables = VariablesHelper.getVariables(project,gitLabApi,applicationSettings.getConfig());
 
         projectVariables.forEach(var -> {
             CIParameter param = dtoFactory.newDTO(CIParameter.class);

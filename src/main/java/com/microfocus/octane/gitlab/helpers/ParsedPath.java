@@ -31,9 +31,11 @@ public class ParsedPath {
                 if(index >=0){
                     fullPathOfProject = fullPathOfProject.substring(0,fullPathOfProject.lastIndexOf("/"));
                     groupFullPath.add(fullPathOfProject);
+                } else{
+                    break;
                 }
             } catch (StringIndexOutOfBoundsException e){
-                fullPathOfProject ="";
+                break;
             }
 
         }
