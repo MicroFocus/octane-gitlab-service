@@ -93,8 +93,19 @@
             <name>Jenkins Maven Repository</name>
             <url>http://repo.jenkins-ci.org/releases/</url>
         </repository>
+        <repository>
+            <id>repo.jenkins-ci.org</id>
+            <url>https://repo.jenkins-ci.org/public/</url>
+        </repository>
     </repositories>
 
+    <pluginRepositories>
+        <pluginRepository>
+            <id>repo.jenkins-ci.org</id>
+            <url>https://repo.jenkins-ci.org/public/</url>
+        </pluginRepository>
+    </pluginRepositories>
+         
     <dependencies>
         <dependency>
             <groupId>javax.xml.bind</groupId>
@@ -166,7 +177,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>nunit</artifactId>
-            <version>0.24</version>
+            <version>0.23</version>
         </dependency>
 
         <!-- TEST -->
@@ -347,6 +358,5 @@
             </distributionManagement>
         </profile>
     </profiles>
-
 
 </project>
