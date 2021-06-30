@@ -177,6 +177,11 @@ public class OctaneServices extends CIPluginServices {
         }
     }
 
+    @Override
+    public String getParentJobName(String jobId) {
+        return ParsedPath.cutLastPartOfPath(jobId);
+    }
+
 //    @Override
 //    public SnapshotNode getSnapshotLatest(String jobCiId, boolean subTree) {
 //        return snapshotsFactory.createSnapshot(jobCiId);
