@@ -130,6 +130,21 @@ Example (any XML file recursively):
 
      glob:**.xml
 
+    
+##### gitlab.variables.pipeline.usage
+This property is optional.   
+By default, the service report to ALM Octane includes all of the project's variables.  
+These variables will be present in the Pipeline module and the user can set a new value and run it from ALM Octane.
+
+To also see the groups or instance variables, add it to the property’s value.
+Example:   
+       
+* Variables from project: gitlab.variables.pipeline.usage=project   
+
+* Variables from project, groups and from instance: gitlab.variables.pipeline.usage=project,groups,instance
+  
+* Variables from group only: gitlab.variables.pipeline.usage=groups
+    
 ## Usage instructions
 1. Create a new GitLab CI server entity in ALM Octane.
 2. Go to the Pipelines module.
