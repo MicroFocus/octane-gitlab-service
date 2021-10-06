@@ -60,6 +60,7 @@ gitlab.personalAccessToken=<sensitive,mandatory: GitLab personal access token>
 gitlab.testResultsFilePattern=<optional: 'glob:pattern' or 'regex:pattern' pattern for finding the test result files inside GitLab job artifact ZIP>.
 For complete documentation of the applicable patterns see https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileSystem.html#getPathMatcher-java.lang.String-
 gitlab.variables.pipeline.usage=<optional: comma separated list of project,groups,instance>
+gitlab.ci.service.can.run.pipeline=<optional: If the service can run pipelines from ALM Octane. true by default> 
 
 # HTTP(S) proxy oriented properties
 # =================================
@@ -144,6 +145,12 @@ Example:
 * Variables from project, groups and from instance: gitlab.variables.pipeline.usage=project,groups,instance
   
 * Variables from group only: gitlab.variables.pipeline.usage=groups
+
+##### gitlab.ci.service.can.run.pipeline
+This property is optional.
+By default, When defining the pipeline in ALM Octane, the user is also able to run it from ALM Octane.
+In some cases, the user should have the ability to add and view the pipeline, but should not have the ability to run it.
+When running the pipeline is not allowed- this parameter should be set to 'false'. 
     
 ## Usage instructions
 1. Create a new GitLab CI server entity in ALM Octane.

@@ -71,6 +71,9 @@ public class ConfigStructure {
     @Value("${gitlab.variables.pipeline.usage:#{null}}")
     private String[] gitlabVariablesPipelineUsage;
 
+    @Value("${gitlab.ci.service.can.run.pipeline:#{null}}")
+    private String canRunPipeline = "true";
+
     @PostConstruct
     public void init() {
         List<Map.Entry<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
@@ -98,6 +101,15 @@ public class ConfigStructure {
 
     public String getServerWebhookRouteUrl(){
         return serverWebhookRouteUrl;
+    }
+
+    /**
+     * Returns whether the GitLab service can run pipelines from Octane UI
+     * This is defined by a parameter since we could not find any corresponding definition used by GitLab API.
+     * @return true when the service is permitted to run pipelines from Octane UI, otherwise- return false.
+     */
+    public boolean canRunPipeline() {
+        return Boolean.valueOf(canRunPipeline);
     }
 
     public List<String> getGitlabVariablesPipelineUsage(){
