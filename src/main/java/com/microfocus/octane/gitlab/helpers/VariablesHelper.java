@@ -73,8 +73,12 @@ public class VariablesHelper {
             if(variablesUsage.contains(VARS_ON_GROUPS)){
                 List<String> groupsFullPath = ParsedPath.getGroupFullPathFromProject(project.getPathWithNameSpace());
                 for(String group :groupsFullPath){
-                    List<Variable> variablesOnGroup = gitLabApi.getGroupApi().getVariables(group);
-                    variables.addAll(variablesOnGroup);
+                    try {
+                        List<Variable> variablesOnGroup = gitLabApi.getGroupApi().getVariables(group);
+                        variables.addAll(variablesOnGroup);
+                    }catch (GitLabApiException e){
+                        log.error("can not find variables for the group:"+group);
+                    }
                 }
 
             }

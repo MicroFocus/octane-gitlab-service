@@ -1,6 +1,5 @@
 package com.microfocus.octane.gitlab.helpers;
 
-import com.microfocus.octane.gitlab.services.GitlabServices;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApiClient;
