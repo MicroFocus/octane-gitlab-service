@@ -10,6 +10,7 @@ import com.hp.octane.integrations.dto.general.CIServerInfo;
 import com.hp.octane.integrations.dto.parameters.CIParameters;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.hp.octane.integrations.dto.tests.*;
+import com.hp.octane.integrations.exceptions.PermissionException;
 import com.hp.octane.integrations.services.configurationparameters.EncodeCiJobBase64Parameter;
 import com.hp.octane.integrations.services.configurationparameters.factory.ConfigurationParameterFactory;
 import com.microfocus.octane.gitlab.app.Application;
@@ -19,6 +20,7 @@ import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.junit5.Testcase;
 import com.microfocus.octane.gitlab.model.junit5.Testsuite;
 import com.microfocus.octane.gitlab.model.junit5.Testsuites;
+import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
@@ -197,6 +199,13 @@ public class OctaneServices extends CIPluginServices {
     @Override
     public void runPipeline(String jobCiId, CIParameters ciParameters) {
         try {
+            //check whether this user is permitted to run the pipeline
+            boolean canUserRunPipeline = applicationSettings.getConfig().canRunPipeline();
+            if(!canUserRunPipeline) {
+                log.error("Current user is not permitted to run pipelines");
+                throw new PermissionException(HttpStatus.SC_FORBIDDEN);
+            }
+
             ParsedPath parsedPath = new ParsedPath(jobCiId, gitLabApi, PathType.PIPELINE);
 
             gitLabApi.getPipelineApi().createPipeline(
