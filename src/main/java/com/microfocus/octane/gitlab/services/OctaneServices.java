@@ -387,4 +387,8 @@ public class OctaneServices extends CIPluginServices {
     public GitLabApiWrapper getGitLabApiWrapper() {
         return gitLabApiWrapper;
     }
+
+    public GitlabServices getGitLabService() {
+        return gitlabServices;
+    }
 }
