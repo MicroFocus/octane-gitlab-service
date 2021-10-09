@@ -22,6 +22,7 @@ import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.event.EventListener;
@@ -42,11 +43,15 @@ public class GitlabServices {
     private final ApplicationSettings applicationSettings;
     private final GitLabApiWrapper gitLabApiWrapper;
     private GitLabApi gitLabApi;
+    private boolean cleanupOnly =false;
 
     @Autowired
-    public GitlabServices(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper) {
+    public GitlabServices(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper,ApplicationArguments applicationArguments) {
         this.applicationSettings = applicationSettings;
         this.gitLabApiWrapper = gitLabApiWrapper;
+        if(applicationArguments.containsOption("cleanupOnly") && (applicationArguments.getOptionValues("cleanupOnly").size()>0)){
+            cleanupOnly = Boolean.parseBoolean(applicationArguments.getOptionValues("cleanupOnly").get(0));
+        }
     }
 
     @PostConstruct
@@ -58,17 +63,27 @@ public class GitlabServices {
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             User currentUser = gitLabApi.getUserApi().getCurrentUser();
 
-            for (Project project : projects) {
-                if (gitLabApiWrapper.isUserHasPermissionForProject(project,currentUser)) {
-                    try {
-                        deleteWebHooks(webhookListenerUrl, project);
-                        ProjectHook hook = new ProjectHook();
-                        hook.setJobEvents(true);
-                        hook.setPipelineEvents(true);
-                        gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
-                    } catch (GitLabApiException e) {
-                        log.warn("Failed to create a GitLab web hook", e);
-                        throw e;
+            if(cleanupOnly){
+                log.info("start with cleanup process");
+                for (Project project : projects) {
+                    if (gitLabApiWrapper.isUserHasPermissionForProject(project, currentUser)) {
+                            deleteWebHooks(webhookListenerUrl, project);
+                    }
+                }
+            }else {
+
+                for (Project project : projects) {
+                    if (gitLabApiWrapper.isUserHasPermissionForProject(project, currentUser)) {
+                        try {
+                            deleteWebHooks(webhookListenerUrl, project);
+                            ProjectHook hook = new ProjectHook();
+                            hook.setJobEvents(true);
+                            hook.setPipelineEvents(true);
+                            gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
+                        } catch (GitLabApiException e) {
+                            log.warn("Failed to create a GitLab web hook", e);
+                            throw e;
+                        }
                     }
                 }
             }
@@ -225,5 +240,9 @@ public class GitlabServices {
         });
 
         return parametersList;
+    }
+
+    public boolean isCleanUpOnly() {
+        return cleanupOnly;
     }
 }

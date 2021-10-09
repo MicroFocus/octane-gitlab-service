@@ -162,6 +162,16 @@ When running the pipeline is not allowed- this parameter should be set to 'false
 7. If you modify anything in the code, a new build is automatically triggered.
 8. Look at the results again, and pay attention to the “Commits” area.
 
+## Cleanup webhooks
+
+It is possible to start the service in clean mode.  
+This mode allows you to clear all hooks from the GitLab server.
+
+To clean the webhooks run the following command line:
+
+```
+java –jar octane-gitlab-service-<version>.jar --cleanupOnly=true
+```
 ## Password encryption
 
 Values of the properties marked as 'sensitive' in the above list can be encrypted before writing them down in the *'application.properties'* file. To encrypt a sensitive token, run the following command line:
@@ -197,6 +207,7 @@ The project must contain files and not be empty. Make sure there is at least one
 If you can run the pipeline from Octane but cannot see progress and results:  
 Check the webhook from your project in GitLab (in GitLab go to: your project  settings  integration  test the webhooks for your service url: <service Url>\events)  
 If necessary, update the application.properties file with the correct server.baseurl value
+
 
 ### Endpoint not accessible by GitLab
 

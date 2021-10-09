@@ -38,9 +38,17 @@ public class Application {
         ConfigurableApplicationContext context = SpringApplication.run(Application.class, args);
         OctaneServices octaneServices = context.getBean("octaneServices", OctaneServices.class);
         try {
+            if(octaneServices.getGitLabService().isCleanUpOnly()){
+                System.out.println("clean-up webhooks from Gitlab server process is finished. Stopping the service");
+                context.close();
+                return;
+            }
+
             tryToConnectToOctane(octaneServices);
             OctaneSDK.addClient(octaneServices.getOctaneConfiguration(), OctaneServices.class);
             System.out.println("Connection to Octane was successful. gitlab application is ready...");
+
+
         } catch (IllegalArgumentException | OctaneConnectivityException r) {
             log.warn("Connection to Octane failed: " + r.getMessage());
             System.out.println("Connection to Octane failed: " + r.getMessage());
