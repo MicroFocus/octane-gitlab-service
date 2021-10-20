@@ -17,9 +17,9 @@ import com.microfocus.octane.gitlab.app.Application;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.*;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
-import com.microfocus.octane.gitlab.model.junit5.Testcase;
-import com.microfocus.octane.gitlab.model.junit5.Testsuite;
-import com.microfocus.octane.gitlab.model.junit5.Testsuites;
+import com.microfocus.octane.gitlab.testresults.JunitTestResultsProvider;
+import com.microfocus.octane.gitlab.helpers.TestResultsHelper;
+
 import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,29 +29,13 @@ import org.gitlab4j.api.models.Job;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import org.w3c.dom.Document;
-import org.xml.sax.InputSource;
-
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.stream.StreamSource;
 import java.io.*;
 import java.net.URL;
-import java.nio.file.FileSystems;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
+
 import java.util.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.PREFIX;
-import static hudson.plugins.nunit.NUnitReportTransformer.NUNIT_TO_JUNIT_XSLFILE_STR;
 
 @Component
 @Scope("singleton")
@@ -63,7 +47,7 @@ public class OctaneServices extends CIPluginServices {
     private static ApplicationSettings applicationSettings;
     private static GitlabServices gitlabServices;
 
-    private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
+//    private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
     private static GitLabApi gitLabApi;
 
     @Autowired
@@ -225,6 +209,26 @@ public class OctaneServices extends CIPluginServices {
         try {
             ParsedPath project = new ParsedPath(ParsedPath.cutLastPartOfPath(jobFullName), gitLabApi, PathType.PROJECT);
             Job job = gitLabApi.getJobApi().getJob(project.getPathWithNameSpace(), Integer.parseInt(buildNumber));
+
+            //report gherkin test results
+
+            File mqmTestResultsFile = TestResultsHelper.getMQMTestResultsFilePath(project.getId() ,job.getId(),applicationSettings.getConfig().getTestResultsOutputFolderPath());
+            InputStream output = null;
+
+
+            if (mqmTestResultsFile.exists() && mqmTestResultsFile.length() > 0){
+                log.info(String.format("get Gherkin Tests Result of %s from  %s, file exist=%s",
+                        project.getDisplayName(), mqmTestResultsFile.getAbsolutePath(), mqmTestResultsFile.exists()));
+                try {
+                    output = mqmTestResultsFile.exists() && mqmTestResultsFile.length() > 0 ? new FileInputStream(mqmTestResultsFile.getAbsolutePath()) : null;
+                } catch (IOException e) {
+                    log.error("failed to get gherkin test results for  " + project.getDisplayName() + " #" + job.getId() + " from " + mqmTestResultsFile.getAbsolutePath());
+                }
+                return output;
+            }
+
+            //if there is no test results for gherkin - report other test results
+
             BuildContext buildContext = dtoFactory.newDTO(BuildContext.class)
                     .setJobId(project.getFullPathOfProjectWithBranch().toLowerCase())
                     .setJobName(project.getPathWithNameSpace())
@@ -232,7 +236,13 @@ public class OctaneServices extends CIPluginServices {
                     .setBuildName(job.getId().toString())
                     .setServerId(applicationSettings.getConfig().getCiServerIdentity());
             result = result.setBuildContext(buildContext);
-            List<TestRun> tests = createTestList(project.getId(), job);
+
+            JunitTestResultsProvider junitTestResultsProvider = JunitTestResultsProvider.getInstance(applicationSettings);
+            InputStream artifactFiles = gitLabApi.getJobApi().downloadArtifactsFile(project.getId(), job.getId());
+
+            List<TestRun> tests = junitTestResultsProvider.createAndGetTestList(
+                    artifactFiles);
+
             if (tests != null && !tests.isEmpty()) {
                 result.setTestRuns(tests);
             } else {
@@ -242,130 +252,6 @@ public class OctaneServices extends CIPluginServices {
             log.warn("Failed to return test results", e);
         }
         return dtoFactory.dtoToXmlStream(result);
-    }
-
-    public List<TestRun> createTestList(Integer projectId, Job job) {
-        List<TestRun> result = new ArrayList<>();
-        try {
-            if (job.getArtifactsFile() != null) {
-                List<Map.Entry<String, ByteArrayInputStream>> artifacts = extractArtifacts(gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
-                JAXBContext jaxbContext = JAXBContext.newInstance(Testsuites.class);
-                for (Map.Entry<String, ByteArrayInputStream> artifact : artifacts) {
-                    try {
-                        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-                        dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
-                        dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-                        DocumentBuilder db = dbf.newDocumentBuilder();
-                        Document doc = db.parse(new InputSource(artifact.getValue()));
-                        String rootTagName = doc.getDocumentElement().getTagName().toLowerCase();
-                        artifact.getValue().reset();
-                        switch (rootTagName) {
-                            case "testsuites":
-                            case "testsuite":
-                                unmarshallAndAddToResults(result, jaxbContext, artifact.getValue());
-                                break;
-                            case "test-run":
-                            case "test-results":
-                                ByteArrayOutputStream os = new ByteArrayOutputStream();
-                                nunitTransformer.transform(new StreamSource(artifact.getValue()), new StreamResult(os));
-                                unmarshallAndAddToResults(result, jaxbContext, new ByteArrayInputStream(os.toByteArray()));
-                                break;
-                            default:
-                                log.error(String.format("Artifact %s: unknown test result format that starts with the <%s> tag", artifact.getKey(), rootTagName));
-                                break;
-                        }
-                    } catch (Exception e) {
-                        log.error("Failed to create a test result list based on the job artifact: " + artifact.getKey(), e);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.error("Failed to create a test list based on the job artifacts", e);
-        }
-        return result;
-    }
-
-    private void unmarshallAndAddToResults(List<TestRun> result, JAXBContext jaxbContext, ByteArrayInputStream artifact) throws JAXBException {
-        Object ots = jaxbContext.createUnmarshaller().unmarshal(artifact);
-        if (ots instanceof Testsuites) {
-            ((Testsuites) ots).getTestsuite().forEach(ts -> ts.getTestcase().forEach(tc -> addTestCase(result, ts, tc)));
-        } else if (ots instanceof Testsuite) {
-            ((Testsuite) ots).getTestcase().forEach(tc -> addTestCase(result, (Testsuite) ots, tc));
-        }
-    }
-
-    private List<Map.Entry<String, ByteArrayInputStream>> extractArtifacts(InputStream inputStream) {
-        PathMatcher matcher = FileSystems.getDefault()
-                .getPathMatcher(applicationSettings.getConfig().getGitlabTestResultsFilePattern());
-        File tempFile = null;
-        try {
-            tempFile = File.createTempFile("gitlab-artifact", ".zip");
-
-            try (OutputStream os = new FileOutputStream(tempFile)) {
-                StreamHelper.copyStream(inputStream, os);
-            }
-
-            inputStream.close();
-
-            ZipFile zipFile = new ZipFile(tempFile);
-
-            List<Map.Entry<String, ByteArrayInputStream>> result = new LinkedList<>();
-            Enumeration<? extends ZipEntry> entries = zipFile.entries();
-
-            while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-
-                if (matcher.matches(Paths.get(entry.getName()))) {
-                    ByteArrayOutputStream entryStream = new ByteArrayOutputStream();
-
-                    try (InputStream zipEntryStream = zipFile.getInputStream(entry)) {
-                        StreamHelper.copyStream(zipEntryStream, entryStream);
-                    }
-                    result.add(Pair.of(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
-                }
-            }
-            return result;
-        } catch (IOException e) {
-            log.warn("Failed to extract the real artifacts, using null as default.", e);
-            return null;
-        } finally {
-            if (tempFile != null) {
-                tempFile.delete();
-            }
-        }
-    }
-
-    private void addTestCase(List<TestRun> result, Testsuite ts, Testcase tc) {
-        TestRunResult testResultStatus;
-        if (tc.getSkipped() != null && tc.getSkipped().trim().length() > 0) {
-            testResultStatus = TestRunResult.SKIPPED;
-        } else if (tc.getFailure().size() > 0) {
-            testResultStatus = TestRunResult.FAILED;
-        } else {
-            testResultStatus = TestRunResult.PASSED;
-        }
-
-        TestRun tr = dtoFactory.newDTO(TestRun.class)
-                .setModuleName("")
-                .setPackageName(ts.getPackage())
-                .setClassName(tc.getClassname())
-                .setTestName(tc.getName())
-                .setResult(testResultStatus)
-                .setDuration(tc.getTime() != null ? Double.valueOf(tc.getTime()).longValue() * 1000 : 1);
-        if (tc.getError() != null && tc.getError().size() > 0) {
-            TestRunError error = dtoFactory.newDTO(TestRunError.class);
-            error.setErrorMessage(tc.getError().get(0).getMessage());
-            error.setErrorType(tc.getError().get(0).getType());
-            error.setStackTrace(tc.getError().get(0).getContent());
-            tr.setError(error);
-        } else if (tc.getFailure() != null && tc.getFailure().size() > 0) {
-            TestRunError error = dtoFactory.newDTO(TestRunError.class);
-            error.setErrorMessage(tc.getFailure().get(0).getMessage());
-            error.setErrorType(tc.getFailure().get(0).getType());
-            error.setStackTrace(tc.getFailure().get(0).getContent());
-            tr.setError(error);
-        }
-        result.add(tr);
     }
 
     @Autowired
@@ -391,4 +277,5 @@ public class OctaneServices extends CIPluginServices {
     public GitlabServices getGitLabService() {
         return gitlabServices;
     }
+
 }
