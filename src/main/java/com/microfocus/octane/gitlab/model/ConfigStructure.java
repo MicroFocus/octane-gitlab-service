@@ -74,6 +74,15 @@ public class ConfigStructure {
     @Value("${gitlab.ci.service.can.run.pipeline:#{null}}")
     private String canRunPipeline = "true";
 
+    @Value("${gitlab.variables.publishMergeRequestVarName:#{null}}")
+    private String publishMergeRequestsVariableName;
+
+    @Value("${gitlab.variables.destinationWorkspaceVarName:#{null}}")
+    private String destinationWorkspaceVariableName;
+
+    @Value("${gitlab.variables.useSSHFormatVarName:#{null}}")
+    private String useSSHFormatVariableName;
+
     @PostConstruct
     public void init() {
         List<Map.Entry<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
@@ -82,6 +91,9 @@ public class ConfigStructure {
         mandatoryGetters.add(Pair.of("octane.apiClientSecret", this::getOctaneApiClientSecret));
         mandatoryGetters.add(Pair.of("gitlab.location", this::getGitlabLocation));
         mandatoryGetters.add(Pair.of("gitlab.personalAccessToken", this::getGitlabPersonalAccessToken));
+        mandatoryGetters.add(Pair.of("gitlab.variables.publishMergeRequestVarName", this::getPublishMergeRequestsVariableName));
+        mandatoryGetters.add(Pair.of("destinationWorkspaceVarName", this::getDestinationWorkspaceVariableName));
+        mandatoryGetters.add(Pair.of("gitlab.variables.useSSHFormatVarName", this::getUseSSHFormatVariableName));
         Set<String> validationErrors = new LinkedHashSet<>();
         mandatoryGetters.forEach(mg -> {
             if (mg.getValue().get() == null || mg.getValue().get().trim().isEmpty()) {
@@ -163,5 +175,17 @@ public class ConfigStructure {
         } catch (IllegalAccessException e) {
             throw new IllegalArgumentException(String.format("%s.%s field in not accessible", protocol, fieldName));
         }
+    }
+
+    public String getPublishMergeRequestsVariableName() {
+        return publishMergeRequestsVariableName;
+    }
+
+    public String getDestinationWorkspaceVariableName() {
+        return destinationWorkspaceVariableName;
+    }
+
+    public String getUseSSHFormatVariableName() {
+        return useSSHFormatVariableName;
     }
 }

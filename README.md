@@ -60,7 +60,10 @@ gitlab.personalAccessToken=<sensitive,mandatory: GitLab personal access token>
 gitlab.testResultsFilePattern=<optional: 'glob:pattern' or 'regex:pattern' pattern for finding the test result files inside GitLab job artifact ZIP>.
 For complete documentation of the applicable patterns see https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileSystem.html#getPathMatcher-java.lang.String-
 gitlab.variables.pipeline.usage=<optional: comma separated list of project,groups,instance>
-gitlab.ci.service.can.run.pipeline=<optional: If the service can run pipelines from ALM Octane. true by default> 
+gitlab.ci.service.can.run.pipeline=<optional: If the service can run pipelines from ALM Octane. true by default>
+gitlab.variables.publishMergeRequestVarName=<mandatory: Name of the variable containing a boolean value that specifies if merge requests will be published into Octane from the current project>
+gitlab.variables.destinationWorkspaceVarName=<mandatory: Name of the variable containing a string value that specifies the destination workspace where merge requests will be published into Octane from the current project>
+gitlab.variables.useSSHFormatVarName=<mandatory: Name of the variable containing a boolean value that specifies if the clone url for the current proeject should be in SSH format or not>
 
 # HTTP(S) proxy oriented properties
 # =================================

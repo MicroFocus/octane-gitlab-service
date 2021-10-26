@@ -79,6 +79,7 @@ public class GitlabServices {
                             ProjectHook hook = new ProjectHook();
                             hook.setJobEvents(true);
                             hook.setPipelineEvents(true);
+                            hook.setMergeRequestsEvents(true);
                             gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
                         } catch (GitLabApiException e) {
                             log.warn("Failed to create a GitLab web hook", e);

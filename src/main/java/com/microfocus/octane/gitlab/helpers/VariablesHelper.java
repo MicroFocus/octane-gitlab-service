@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class VariablesHelper {
 
@@ -107,5 +108,16 @@ public class VariablesHelper {
             variableList.add(var);
         });
         return variableList;
+    }
+
+    public static Optional<Variable> getProjectVariable(GitLabApi gitLabApi, int projectId, String variableName) {
+        Variable variable = null;
+        try {
+            variable = gitLabApi.getProjectApi().getVariable(projectId, variableName);
+        } catch (GitLabApiException apiException) {
+            log.warn(apiException.getMessage(), apiException);
+        }
+
+        return Optional.ofNullable(variable);
     }
 }
