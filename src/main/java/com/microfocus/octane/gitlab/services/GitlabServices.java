@@ -20,7 +20,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
-import org.gitlab4j.api.models.*;
+import org.gitlab4j.api.models.AccessLevel;
+import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.ProjectFilter;
+import org.gitlab4j.api.models.ProjectHook;
+import org.gitlab4j.api.models.User;
+import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -32,7 +37,9 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 @Component
@@ -80,7 +87,7 @@ public class GitlabServices {
                             hook.setJobEvents(true);
                             hook.setPipelineEvents(true);
                             hook.setMergeRequestsEvents(true);
-                            gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, "");
+                            gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, generateNewToken());
                         } catch (GitLabApiException e) {
                             log.warn("Failed to create a GitLab web hook", e);
                             throw e;
@@ -92,6 +99,14 @@ public class GitlabServices {
             log.warn("Failed to create GitLab web hooks", e);
             throw new RuntimeException(e);
         }
+    }
+
+    public static String generateNewToken() {
+        final SecureRandom secureRandom = new SecureRandom();
+        final Base64.Encoder base64Encoder = Base64.getUrlEncoder();
+        byte[] randomBytes = new byte[24];
+        secureRandom.nextBytes(randomBytes);
+        return base64Encoder.encodeToString(randomBytes);
     }
 
     private URL getWebHookListenerURL() throws MalformedURLException {
