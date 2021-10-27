@@ -17,7 +17,6 @@ import com.hp.octane.integrations.dto.scm.SCMData;
 import com.hp.octane.integrations.dto.scm.SCMRepository;
 import com.hp.octane.integrations.dto.scm.SCMType;
 import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
-import com.hp.octane.integrations.dto.tests.TestRun;
 import com.hp.octane.integrations.services.pullrequestsandbranches.factory.PullRequestFetchParameters;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
@@ -27,6 +26,8 @@ import com.microfocus.octane.gitlab.helpers.VariablesHelper;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.MergeRequestEventType;
 import com.microfocus.octane.gitlab.services.OctaneServices;
+import com.microfocus.octane.gitlab.testresults.GherkinTestResultsProvider;
+import com.microfocus.octane.gitlab.testresults.JunitTestResultsProvider;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
@@ -49,6 +50,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
@@ -217,18 +219,28 @@ public class EventListener {
                     Project project = gitLabApi.getProjectApi().getProject(projectId);
                     Integer jobId = getObjectId(event);
                     Job job = gitLabApi.getJobApi().getJob(projectId, jobId);
-                    final String gitlabTestResultsFilePattern = applicationSettings.getConfig().getGitlabTestResultsFilePattern();
-                    if (gitlabTestResultsFilePattern != null && !gitlabTestResultsFilePattern.isEmpty() && job.getArtifactsFile() != null) {
-                        List<TestRun> testResults = octaneServices.createTestList(projectId, job);
-                        if (testResults != null && testResults.size() > 0) {
-                            OctaneSDK.getClients().forEach(client ->
-                                    client.getTestsService().enqueuePushTestsResult(project.getPathWithNamespace().toLowerCase() + "/" + job.getName(), jobId.toString(), null));
-                        } else {
-                            String warning = String.format("No test results found by using the %s pattern",
-                                    applicationSettings.getConfig().getGitlabTestResultsFilePattern());
-                            log.warn(warning);
-                            return Response.ok().entity(warning).build();
+
+                    if(job.getArtifactsFile() != null) {
+
+                        GherkinTestResultsProvider gherkinTestResultsProvider = GherkinTestResultsProvider.getInstance(applicationSettings);
+                        boolean isGherkinTestsExist =
+                                gherkinTestResultsProvider.createTestList(project,job,gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+
+                        //looking for Regular tests
+                        if(!isGherkinTestsExist) {
+
+                            JunitTestResultsProvider testResultsProduce =  JunitTestResultsProvider.getInstance(applicationSettings);
+                            boolean testResultsExist = testResultsProduce.createTestList(project,job,
+                                    gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+
+                            if(!testResultsExist) {
+                                String warning = String.format("No test results found by using the %s pattern",
+                                        applicationSettings.getConfig().getGitlabTestResultsFilePattern());
+                                log.warn(warning);
+                                return Response.ok().entity(warning).build();
+                            }
                         }
+
                     }
                 }
             }
@@ -301,7 +313,7 @@ public class EventListener {
                 .setResult(eventType == CIEventType.STARTED || eventType == CIEventType.DELETED ? null : convertCiBuildResult(getStatus(event)))
                 .setStartTime(startTime)
                 .setEstimatedDuration(null)
-                .setDuration(eventType == CIEventType.STARTED ? null : duration != null ? Math.round(duration instanceof Double ? 1000* (Double) duration : 1000 * (Integer) duration) : null)
+                .setDuration(calculateDuration(eventType,duration))
                 .setScmData(null)
                 .setCauses(getCauses(event, isScmNull))
                 .setPhaseType(isPipelineEvent(event) ? PhaseType.POST : PhaseType.INTERNAL)
@@ -327,8 +339,19 @@ public class EventListener {
         return events;
     }
 
-    private Long getStartTime(JSONObject event, Object duration) {
+    private Long calculateDuration(CIEventType eventType, Object duration) {
+        if(eventType == CIEventType.STARTED || duration == null) return null;
 
+        if(duration instanceof Double) return Math.round(1000* (Double) duration);
+        if(duration instanceof BigDecimal) return Long.valueOf(Math.round(1000* ((BigDecimal) duration).intValue()));
+
+        return Long.valueOf(Math.round(1000 * (Integer) duration));
+
+       // return Math.round(duration instanceof Double ? 1000* (Double) duration : 1000 * (Integer) duration);
+
+    }
+
+    private Long getStartTime(JSONObject event, Object duration) {
         Long startTime = getTime(event, "started_at");
         if (startTime == null){
            try {

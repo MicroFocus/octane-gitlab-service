@@ -11,6 +11,7 @@ import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.ParsedPath;
 import com.microfocus.octane.gitlab.helpers.PathType;
 import com.microfocus.octane.gitlab.helpers.VariablesHelper;
+import com.microfocus.octane.gitlab.testresults.TestResultsCleanUpRunnable;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -41,6 +42,9 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Scope("singleton")
@@ -51,6 +55,7 @@ public class GitlabServices {
     private final GitLabApiWrapper gitLabApiWrapper;
     private GitLabApi gitLabApi;
     private boolean cleanupOnly =false;
+    private  ScheduledExecutorService executor;
 
     @Autowired
     public GitlabServices(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper,ApplicationArguments applicationArguments) {
@@ -63,6 +68,7 @@ public class GitlabServices {
 
     @PostConstruct
     private void init() throws MalformedURLException {
+        //Adding webHooks
         URL webhookListenerUrl = getWebHookListenerURL();
 
         gitLabApi = gitLabApiWrapper.getGitLabApi();
@@ -99,6 +105,11 @@ public class GitlabServices {
             log.warn("Failed to create GitLab web hooks", e);
             throw new RuntimeException(e);
         }
+
+        //start cleanUp thread
+        executor =
+                Executors.newSingleThreadScheduledExecutor();
+        executor.scheduleAtFixedRate(new TestResultsCleanUpRunnable(applicationSettings.getConfig().getTestResultsOutputFolderPath()),  TestResultsCleanUpRunnable.INTERVAL, TestResultsCleanUpRunnable.INTERVAL, TimeUnit.MINUTES);
     }
 
     public static String generateNewToken() {
@@ -261,4 +272,5 @@ public class GitlabServices {
     public boolean isCleanUpOnly() {
         return cleanupOnly;
     }
+
 }

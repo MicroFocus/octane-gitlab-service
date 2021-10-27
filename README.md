@@ -59,6 +59,8 @@ gitlab.location=<mandatory: the base URL of the GitLab server>
 gitlab.personalAccessToken=<sensitive,mandatory: GitLab personal access token>
 gitlab.testResultsFilePattern=<optional: 'glob:pattern' or 'regex:pattern' pattern for finding the test result files inside GitLab job artifact ZIP>.
 For complete documentation of the applicable patterns see https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileSystem.html#getPathMatcher-java.lang.String-
+gitlab.gherkinTestResultsFilePattern=<optional:'glob:pattern' or 'regex:pattern' pattern for finding Gherkin test result files inside GitLab job artifact ZIP>
+gitlab.testResultsOutputFolderPath=<optional: place to save test results before sending it to Octane.>
 gitlab.variables.pipeline.usage=<optional: comma separated list of project,groups,instance>
 gitlab.ci.service.can.run.pipeline=<optional: If the service can run pipelines from ALM Octane. true by default>
 gitlab.variables.publishMergeRequestVarName=<mandatory: Name of the variable containing a boolean value that specifies if merge requests will be published into Octane from the current project>
@@ -134,6 +136,13 @@ Example (any XML file recursively):
 
      glob:**.xml
 
+##### gitlab.gherkinTestResultsFilePattern #####  
+same as testResultsFilePattern property, but for Gherkin test results.
+
+##### gitlab.testResultsOutputFolderPath #####
+Path to directory in GitLab service machine.  
+The service will saved test results (of Gherkin) under this path till it will be sent to Octane. 
+After one hour the files will be deleted. 
     
 ##### gitlab.variables.pipeline.usage
 This property is optional.   

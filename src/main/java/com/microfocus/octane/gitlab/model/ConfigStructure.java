@@ -38,6 +38,12 @@ public class ConfigStructure {
     @Value("${gitlab.testResultsFilePattern:**.xml}")
     private String gitlabTestResultsFilePattern;
 
+    @Value("${gitlab.gherkinTestResultsFilePattern:#{null}l}")
+    private String gitlabGherkinTestResultsFilePattern;
+
+    @Value("${gitlab.testResultsOutputFolderPath:#{null}}")
+    private String testResultsOutputFolderPath;
+
     @Value("${server.webhook.route.url:#{null}}")
     private  String serverWebhookRouteUrl;
 
@@ -164,6 +170,13 @@ public class ConfigStructure {
         return gitlabTestResultsFilePattern;
     }
 
+    public String getGitlabGherkinTestResultsFilePattern(){
+        return gitlabGherkinTestResultsFilePattern;
+    }
+
+    public String getTestResultsOutputFolderPath(){
+       return testResultsOutputFolderPath;
+    }
     public String getProxyField(String protocol, String fieldName) {
         Optional<Field> field = Arrays.stream(this.getClass().getDeclaredFields()).filter(f -> f.getName().toLowerCase().equals(protocol.concat(fieldName).toLowerCase())).findFirst();
         if (!field.isPresent()) {
