@@ -66,6 +66,7 @@ gitlab.ci.service.can.run.pipeline=<optional: If the service can run pipelines f
 gitlab.variables.publishMergeRequestVarName=<mandatory: Name of the variable containing a boolean value that specifies if merge requests will be published into Octane from the current project>
 gitlab.variables.destinationWorkspaceVarName=<mandatory: Name of the variable containing a string value that specifies the destination workspace where merge requests will be published into Octane from the current project>
 gitlab.variables.useSSHFormatVarName=<mandatory: Name of the variable containing a boolean value that specifies if the clone url for the current proeject should be in SSH format or not>
+gitlab.mergeRequestHistoryFolderPath=<mandatory: Path of directory to store fetch history state for projects>
 
 # HTTP(S) proxy oriented properties
 # =================================

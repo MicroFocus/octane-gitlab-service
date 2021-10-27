@@ -89,6 +89,9 @@ public class ConfigStructure {
     @Value("${gitlab.variables.useSSHFormatVarName:#{null}}")
     private String useSSHFormatVariableName;
 
+    @Value("${gitlab.mergeRequestHistoryFolderPath:#{null}}")
+    private String mergeRequestHistoryFolderPath;
+
     @PostConstruct
     public void init() {
         List<Map.Entry<String, Supplier<String>>> mandatoryGetters = new ArrayList<>();
@@ -100,6 +103,7 @@ public class ConfigStructure {
         mandatoryGetters.add(Pair.of("gitlab.variables.publishMergeRequestVarName", this::getPublishMergeRequestsVariableName));
         mandatoryGetters.add(Pair.of("destinationWorkspaceVarName", this::getDestinationWorkspaceVariableName));
         mandatoryGetters.add(Pair.of("gitlab.variables.useSSHFormatVarName", this::getUseSSHFormatVariableName));
+        mandatoryGetters.add(Pair.of("gitlab.mergeRequestHistoryFolderPath", this::getMergeRequestHistoryFolderPath));
         Set<String> validationErrors = new LinkedHashSet<>();
         mandatoryGetters.forEach(mg -> {
             if (mg.getValue().get() == null || mg.getValue().get().trim().isEmpty()) {
@@ -200,5 +204,9 @@ public class ConfigStructure {
 
     public String getUseSSHFormatVariableName() {
         return useSSHFormatVariableName;
+    }
+
+    public String getMergeRequestHistoryFolderPath() {
+        return mergeRequestHistoryFolderPath;
     }
 }

@@ -10,18 +10,17 @@ import com.hp.octane.integrations.dto.events.CIEventType;
 import com.hp.octane.integrations.dto.events.MultiBranchType;
 import com.hp.octane.integrations.dto.events.PhaseType;
 import com.hp.octane.integrations.dto.parameters.CIParameter;
-import com.hp.octane.integrations.dto.scm.PullRequest;
 import com.hp.octane.integrations.dto.scm.SCMChange;
 import com.hp.octane.integrations.dto.scm.SCMCommit;
 import com.hp.octane.integrations.dto.scm.SCMData;
 import com.hp.octane.integrations.dto.scm.SCMRepository;
 import com.hp.octane.integrations.dto.scm.SCMType;
 import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
-import com.hp.octane.integrations.services.pullrequestsandbranches.factory.PullRequestFetchParameters;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
 import com.microfocus.octane.gitlab.helpers.ParsedPath;
 import com.microfocus.octane.gitlab.helpers.PathType;
+import com.microfocus.octane.gitlab.helpers.PullRequestHelper;
 import com.microfocus.octane.gitlab.helpers.VariablesHelper;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.MergeRequestEventType;
@@ -32,6 +31,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
+import org.gitlab4j.api.models.Commit;
 import org.gitlab4j.api.models.CompareResults;
 import org.gitlab4j.api.models.Diff;
 import org.gitlab4j.api.models.Job;
@@ -49,20 +49,16 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Component
 @Path("/events")
@@ -71,14 +67,12 @@ public class EventListener {
     private static final Logger log = LogManager.getLogger(EventListener.class);
     private static final DTOFactory dtoFactory = DTOFactory.getInstance();
     private final GitLabApi gitLabApi;
-    private final OctaneServices octaneServices;
     private final ApplicationSettings applicationSettings;
 
     @Autowired
     public EventListener(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper, OctaneServices octaneServices) {
         this.applicationSettings = applicationSettings;
         this.gitLabApi = gitLabApiWrapper.getGitLabApi();
-        this.octaneServices = octaneServices;
     }
 
     @POST
@@ -99,68 +93,7 @@ public class EventListener {
         log.traceEntry();
         try {
             if (isMergeRequestEvent(event)) {
-
-                ConfigStructure config = applicationSettings.getConfig();
-
-                if (getMREventType(event).equals(MergeRequestEventType.UNKNOWN)) {
-                   log.warn("Unknown event on merge request has taken place!");
-                   return Response.ok().build();
-                }
-
-                Project project = gitLabApi.getProjectApi().getProject(event.getJSONObject("project").getInt("id"));
-
-                Optional<Variable> publishMergeRequests = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
-                        config.getPublishMergeRequestsVariableName());
-                if (publishMergeRequests.isEmpty() || !Boolean.parseBoolean(publishMergeRequests.get().getValue())) {
-                    return Response.ok().build();
-                }
-
-                Optional<Variable> destinationWSVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
-                        config.getDestinationWorkspaceVariableName());
-                if (destinationWSVar.isEmpty()) {
-                    String warning = "Variable for destination workspace has not been set for project with id" + project.getId();
-                    log.warn(warning);
-                    return Response.ok().entity(warning).build();
-                }
-
-                Optional<Variable> useSSHFormatVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
-                        config.getUseSSHFormatVariableName());
-                boolean useSSHFormat = useSSHFormatVar.isPresent() && Boolean.parseBoolean(useSSHFormatVar.get().getValue());
-
-                String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
-
-                int mergeRequestId = getObjectId(event);
-                MergeRequest mergeRequest = gitLabApi.getMergeRequestApi().getMergeRequest(project.getId(), mergeRequestId);
-
-                SCMRepository sourceScmRepository = dtoFactory.newDTO(SCMRepository.class)
-                        .setUrl(repoUrl)
-                        .setBranch(mergeRequest.getSourceBranch())
-                        .setType(SCMType.GIT);
-
-                SCMRepository targetScmRepository = dtoFactory.newDTO(SCMRepository.class)
-                        .setUrl(repoUrl)
-                        .setBranch(mergeRequest.getTargetBranch())
-                        .setType(SCMType.GIT);
-
-                List<SCMCommit> mergeRequestCommits = getMergeRequestCommits(project, mergeRequest);
-
-                PullRequest pullRequest =
-                        createPullRequest(mergeRequest, sourceScmRepository, targetScmRepository, mergeRequestCommits);
-
-                PullRequestFetchParameters pullRequestFetchParameters = new PullRequestFetchParameters()
-                        .setRepoUrl(repoUrl);
-
-                String destinationWorkspace = destinationWSVar.get().getValue();
-
-                OctaneSDK.getClients().forEach(client -> {
-                    try {
-                        client.getPullRequestAndBranchService()
-                                .sendPullRequests(Collections.singletonList(pullRequest), destinationWorkspace,
-                                        pullRequestFetchParameters, log::info);
-                    } catch (IOException e) {
-                        log.error(e.getMessage());
-                    }
-                });
+                return handleMergeRequestEvent(event);
             }
 
             CIEventType eventType = getEventType(event);
@@ -251,37 +184,45 @@ public class EventListener {
         return Response.ok().build();
     }
 
-    private List<SCMCommit> getMergeRequestCommits(Project project, MergeRequest mergeRequest) throws GitLabApiException {
-        return gitLabApi.getMergeRequestApi()
-                .getCommits(project.getId(), mergeRequest.getIid())
-                .stream().map(commit -> DTOFactory.getInstance().newDTO(SCMCommit.class)
-                        .setRevId(commit.getId())
-                        .setComment(commit.getMessage())
-                        .setUser(commit.getCommitterName())
-                        .setUserEmail(commit.getCommitterEmail())
-                        .setTime(Objects.isNull(commit.getTimestamp()) ? null : commit.getTimestamp().getTime())
-                        .setParentRevId(commit.getParentIds().isEmpty() ? null : commit.getParentIds().get(0)))
-                .collect(Collectors.toList());
-    }
+    private Response handleMergeRequestEvent(JSONObject event) throws GitLabApiException {
+        ConfigStructure config = applicationSettings.getConfig();
 
-    private PullRequest createPullRequest(MergeRequest mergeRequest, SCMRepository sourceScmRepository,
-                                       SCMRepository targetScmRepository, List<SCMCommit> mergeRequestCommits) {
-        return DTOFactory.getInstance().newDTO(PullRequest.class)
-                .setId(Integer.toString(mergeRequest.getIid()))
-                .setTitle(mergeRequest.getTitle())
-                .setDescription(mergeRequest.getDescription())
-                .setState(mergeRequest.getState())
-                .setCreatedTime(Objects.isNull(mergeRequest.getCreatedAt()) ? null : mergeRequest.getCreatedAt().getTime())
-                .setUpdatedTime(Objects.isNull(mergeRequest.getUpdatedAt()) ? null : mergeRequest.getUpdatedAt().getTime())
-                .setMergedTime(Objects.isNull(mergeRequest.getMergedAt()) ? null : mergeRequest.getMergedAt().getTime())
-                .setIsMerged(Objects.nonNull(mergeRequest.getMergedAt()))
-                .setAuthorName(Objects.isNull(mergeRequest.getAuthor()) ? null : mergeRequest.getAuthor().getName())
-                .setAuthorEmail(Objects.isNull(mergeRequest.getAuthor()) ? null : mergeRequest.getAuthor().getEmail())
-                .setClosedTime(Objects.isNull(mergeRequest.getClosedAt()) ? null : mergeRequest.getClosedAt().getTime())
-                .setSelfUrl(mergeRequest.getWebUrl())
-                .setSourceRepository(sourceScmRepository)
-                .setTargetRepository(targetScmRepository)
-                .setCommits(mergeRequestCommits);
+        if (getMREventType(event).equals(MergeRequestEventType.UNKNOWN)) {
+            String warning = "Unknown event on merge request has taken place!";
+            log.warn(warning);
+            return Response.ok().entity(warning).build();
+        }
+
+        Project project = gitLabApi.getProjectApi().getProject(event.getJSONObject("project").getInt("id"));
+
+        Optional<Variable> publishMergeRequests = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
+                config.getPublishMergeRequestsVariableName());
+        if (publishMergeRequests.isEmpty() || !Boolean.parseBoolean(publishMergeRequests.get().getValue())) {
+            return Response.ok().build();
+        }
+
+        Optional<Variable> destinationWSVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
+                config.getDestinationWorkspaceVariableName());
+        if (destinationWSVar.isEmpty()) {
+            String warning = "Variable for destination workspace has not been set for project with id" + project.getId();
+            log.warn(warning);
+            return Response.ok().entity(warning).build();
+        }
+
+        Optional<Variable> useSSHFormatVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
+                config.getUseSSHFormatVariableName());
+        boolean useSSHFormat = useSSHFormatVar.isPresent() && Boolean.parseBoolean(useSSHFormatVar.get().getValue());
+
+        String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
+
+        int mergeRequestId = getObjectId(event);
+        MergeRequest mergeRequest = gitLabApi.getMergeRequestApi().getMergeRequest(project.getId(), mergeRequestId);
+        List<Commit> mergeRequestCommits = gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
+
+        PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, repoUrl,
+                destinationWSVar.get().getValue());
+
+        return Response.ok().build();
     }
 
     private List<CIEvent> getCIEvents(JSONObject event) {
