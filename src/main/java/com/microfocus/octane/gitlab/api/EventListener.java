@@ -150,7 +150,7 @@ public class EventListener {
                 Integer projectId = isPipelineEvent(event) ? event.getJSONObject("project").getInt("id") : event.getInt("project_id");
                 if (!isPipelineEvent(event)) {
                     Project project = gitLabApi.getProjectApi().getProject(projectId);
-                    Integer jobId = getObjectId(event);
+                    Integer jobId = getEventTargetObjectId(event);
                     Job job = gitLabApi.getJobApi().getJob(projectId, jobId);
 
                     if(job.getArtifactsFile() != null) {
@@ -216,7 +216,7 @@ public class EventListener {
 
         String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
 
-        int mergeRequestId = getObjectId(event);
+        int mergeRequestId = getEventTargetObjectId(event);
         MergeRequest mergeRequest = gitLabApi.getMergeRequestApi().getMergeRequest(project.getId(), mergeRequestId);
         List<Commit> mergeRequestCommits = gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
 
@@ -229,7 +229,7 @@ public class EventListener {
     private List<CIEvent> getCIEvents(JSONObject event) {
         List<CIEvent> events = new ArrayList<>();
         CIEventType eventType = getEventType(event);
-        Integer buildCiId = getObjectId(event);
+        Integer buildCiId = getEventTargetObjectId(event);
 
         Object duration = getDuration(event);
         Long startTime = getStartTime(event,duration);
@@ -487,7 +487,7 @@ public class EventListener {
         }
     }
 
-    private Integer getObjectId(JSONObject event) {
+    private Integer getEventTargetObjectId(JSONObject event) {
         if (isMergeRequestEvent(event)) {
             return event.getJSONObject("object_attributes").getInt("iid");
         } else if (isPipelineEvent(event)) {
