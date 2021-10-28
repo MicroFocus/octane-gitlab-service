@@ -185,6 +185,7 @@ public class EventListener {
     }
 
     private Response handleMergeRequestEvent(JSONObject event) throws GitLabApiException {
+        log.info("Merge Request event occurred.");
         ConfigStructure config = applicationSettings.getConfig();
 
         if (getMREventType(event).equals(MergeRequestEventType.UNKNOWN)) {

@@ -106,12 +106,13 @@ public class MergeRequestHistoryHandler {
     }
 
     private void startListening() {
-        log.info("Listening for disk changes on " + watchPath);
         taskExecutor.execute(() -> {
             WatchKey key;
             try {
+                log.info("Listening for disk changes on " + watchPath + " ...");
                 while ((key = watchService.take()) != null) {
                     for (WatchEvent<?> event : key.pollEvents()) {
+                        log.info("Disk change event occurred: " + event.context().toString() + " was deleted.");
                         String projectId = event.context().toString();
                         try {
                             Project project = gitLabApi.getProjectApi().getProject(projectId);
@@ -131,6 +132,7 @@ public class MergeRequestHistoryHandler {
     }
 
     private void sendMergeRequestsToOctane(Project project) throws GitLabApiException {
+        log.info("Sending merge request history for project with id " + project.getId() + " to Octane.");
         List<MergeRequest> mergeRequests = gitLabApi.getMergeRequestApi().getMergeRequests(project.getId());
         mergeRequests.forEach(mergeRequest -> {
             Optional<Variable> destinationWSVar =

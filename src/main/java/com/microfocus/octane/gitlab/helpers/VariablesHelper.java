@@ -115,7 +115,8 @@ public class VariablesHelper {
         try {
             variable = gitLabApi.getProjectApi().getVariable(projectId, variableName);
         } catch (GitLabApiException apiException) {
-            log.warn(apiException.getMessage(), apiException);
+            log.warn("Variable " + variableName + " could not be obtained for project with id " + projectId + ". " +
+                    apiException.getMessage());
         }
 
         return Optional.ofNullable(variable);
