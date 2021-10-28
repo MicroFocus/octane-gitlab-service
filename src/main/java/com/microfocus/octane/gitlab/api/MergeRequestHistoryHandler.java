@@ -13,8 +13,7 @@ import org.gitlab4j.api.models.MergeRequest;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +32,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
+@DependsOn({"gitLabApiWrapper", "applicationSettings", "taskExecutor"})
 public class MergeRequestHistoryHandler {
 
     private static final Logger log = LogManager.getLogger(MergeRequestHistoryHandler.class);
@@ -41,11 +41,6 @@ public class MergeRequestHistoryHandler {
     private final WatchService watchService;
     private final Path watchPath;
     private final TaskExecutor taskExecutor;
-
-    @Bean
-    public TaskExecutor taskExecutor() {
-        return new SimpleAsyncTaskExecutor();
-    }
 
     @Autowired
     public MergeRequestHistoryHandler(GitLabApiWrapper gitLabApiWrapper, ApplicationSettings applicationSettings,
@@ -72,6 +67,9 @@ public class MergeRequestHistoryHandler {
 
     private void registerWatchPath() {
         try {
+            if (!Files.exists(this.watchPath)) {
+                Files.createDirectory(this.watchPath);
+            }
             this.watchPath.register(this.watchService, StandardWatchEventKinds.ENTRY_DELETE);
         } catch (IOException e) {
             e.printStackTrace();
@@ -108,6 +106,7 @@ public class MergeRequestHistoryHandler {
     }
 
     private void startListening() {
+        log.info("Listening for disk changes on " + watchPath);
         taskExecutor.execute(() -> {
             WatchKey key;
             try {
