@@ -140,9 +140,9 @@ public class MergeRequestHistoryHandler {
                         applicationSettings.getConfig().getDestinationWorkspaceVariableName());
 
         if (destinationWSVar.isEmpty()) {
-            String warning = "Variable for destination workspace has not been set for project with id" +
+            String err = "Variable for destination workspace has not been set for project with id" +
                     project.getId();
-            log.warn(warning);
+            log.error(err);
         } else {
             Optional<Variable> useSSHFormatVar =
                     VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
@@ -153,16 +153,16 @@ public class MergeRequestHistoryHandler {
             String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
 
             mergeRequests.forEach(mergeRequest -> {
-                    List<Commit> mergeRequestCommits = new ArrayList<>();
-                    try {
-                        mergeRequestCommits =
-                                gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
-                    } catch (GitLabApiException e) {
-                        log.warn(e.getMessage(), e);
-                    }
+                List<Commit> mergeRequestCommits = new ArrayList<>();
+                try {
+                    mergeRequestCommits =
+                            gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
+                } catch (GitLabApiException e) {
+                    log.warn(e.getMessage(), e);
+                }
 
-                    PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, repoUrl,
-                            destinationWSVar.get().getValue());
+                PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, repoUrl,
+                        destinationWSVar.get().getValue());
             });
         }
     }

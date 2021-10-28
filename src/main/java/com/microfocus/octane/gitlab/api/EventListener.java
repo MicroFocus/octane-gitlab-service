@@ -205,9 +205,9 @@ public class EventListener {
         Optional<Variable> destinationWSVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                 config.getDestinationWorkspaceVariableName());
         if (destinationWSVar.isEmpty()) {
-            String warning = "Variable for destination workspace has not been set for project with id" + project.getId();
-            log.warn(warning);
-            return Response.ok().entity(warning).build();
+            String err = "Variable for destination workspace has not been set for project with id" + project.getId();
+            log.error(err);
+            return Response.ok().entity(err).build();
         }
 
         Optional<Variable> useSSHFormatVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
