@@ -134,35 +134,36 @@ public class MergeRequestHistoryHandler {
     private void sendMergeRequestsToOctane(Project project) throws GitLabApiException {
         log.info("Sending merge request history for project with id " + project.getId() + " to Octane.");
         List<MergeRequest> mergeRequests = gitLabApi.getMergeRequestApi().getMergeRequests(project.getId());
-        mergeRequests.forEach(mergeRequest -> {
-            Optional<Variable> destinationWSVar =
+
+        Optional<Variable> destinationWSVar =
+                VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
+                        applicationSettings.getConfig().getDestinationWorkspaceVariableName());
+
+        if (destinationWSVar.isEmpty()) {
+            String warning = "Variable for destination workspace has not been set for project with id" +
+                    project.getId();
+            log.warn(warning);
+        } else {
+            Optional<Variable> useSSHFormatVar =
                     VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
-                            applicationSettings.getConfig().getDestinationWorkspaceVariableName());
+                            applicationSettings.getConfig().getUseSSHFormatVariableName());
+            boolean useSSHFormat =
+                    useSSHFormatVar.isPresent() && Boolean.parseBoolean(useSSHFormatVar.get().getValue());
 
-            if (destinationWSVar.isEmpty()) {
-                String warning = "Variable for destination workspace has not been set for project with id" +
-                        project.getId();
-                log.warn(warning);
-            } else {
-                Optional<Variable> useSSHFormatVar =
-                        VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
-                                applicationSettings.getConfig().getUseSSHFormatVariableName());
-                boolean useSSHFormat =
-                        useSSHFormatVar.isPresent() && Boolean.parseBoolean(useSSHFormatVar.get().getValue());
-                String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
+            String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
 
-                List<Commit> mergeRequestCommits = new ArrayList<>();
+            mergeRequests.forEach(mergeRequest -> {
+                    List<Commit> mergeRequestCommits = new ArrayList<>();
+                    try {
+                        mergeRequestCommits =
+                                gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
+                    } catch (GitLabApiException e) {
+                        log.warn(e.getMessage(), e);
+                    }
 
-                try {
-                    mergeRequestCommits =
-                            gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
-                } catch (GitLabApiException e) {
-                    log.warn(e.getMessage(), e);
-                }
-
-                PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, repoUrl,
-                        destinationWSVar.get().getValue());
-            }
-        });
+                    PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, repoUrl,
+                            destinationWSVar.get().getValue());
+            });
+        }
     }
 }
