@@ -164,7 +164,60 @@ This property is optional.
 By default, When defining the pipeline in ALM Octane, the user is also able to run it from ALM Octane.
 In some cases, the user should have the ability to add and view the pipeline, but should not have the ability to run it.
 When running the pipeline is not allowed- this parameter should be set to 'false'. 
-    
+
+##### gitlab.variables.publishMergeRequestVarName
+The name of the gitlab defined variable that specifies if merge requests should be sent to Octane or not for the project
+the variable is defined in.
+
+The values must be boolean values (true of false).
+
+If the variable is not defined in Gitlab or if it is set to anything but true then merge requests will not be sent to 
+Octane for the current project.
+
+##### gitlab.variables.destinationWorkspaceVarName
+
+The name of the gitlab defined variable that specifies the destination workspace for the sent pull requests.
+
+If the project has merge request sending set to true (the publishMergeRequest variable), but does not have this variable
+defined or if the workspace specified does not exist an error will be thrown.
+
+Rule of thumb: Where publishMergeRequest variable is set to true destinationWorkspace variable must also be configured 
+in order for the tool to work correctly.
+
+##### gitlab.variables.useSSHFormatVarName
+
+The name of the gitlab defined variable that specifies which url of the repo should be used for cloning.
+
+The values must be boolean values (true of false).
+
+If the value is set to true the ssh url will be used. Otherwise, if the value is not true or if the variable is not 
+defined at all for the project, then the http url will be used by default.
+
+##### gitlab.mergeRequestHistoryFolderPath
+
+The path to a folder where merge request history fetching statuses should be kept for each of the project.
+
+If the folder does not exist, then it will be created automatically.
+
+In this folder an empty file for each of the projects will be created (the name of the file will be the id of each 
+project). The meaning of the files the following: if a file named with an id of a project exists, it means that merge 
+request history has been fetched for that project.
+
+The tool consistently listens for changes in the directory and if one file for a specific project is deleted, than the 
+tool will automatically fetch the merge request history for that project and create the file again.
+
+## Configuring variables in Gitlab
+
+To configure variables inside a project you must do the following:
+1. While inside the project click on Settings -> CI/CD
+2. Go to the Variables section and click "Expand"
+3. Click on the "Add Variable button"
+4. Fill in the "Key" and "Value" fields and then click the "Add Variable" button
+
+The key of the variables is the name that should be configured in the application.properties file for variable name 
+properties (gitlab.variables.publishMergeRequestVarName, gitlab.variables.destinationWorkspaceVarName,
+gitlab.variables.useSSHFormatVarName).
+
 ## Usage instructions
 1. Create a new GitLab CI server entity in ALM Octane.
 2. Go to the Pipelines module.
