@@ -195,12 +195,12 @@ defined at all for the project, then the http url will be used by default.
 
 ##### gitlab.mergeRequestHistoryFolderPath
 
-The path to a folder where merge request history fetching statuses should be kept for each of the project.
+The path to a folder where merge request history fetching statuses should be kept for each of the projects.
 
 If the folder does not exist, then it will be created automatically.
 
 In this folder an empty file for each of the projects will be created (the name of the file will be the id of each 
-project). The meaning of the files the following: if a file named with an id of a project exists, it means that merge 
+project). The meaning of the files is the following: if a file named with an id of a project exists, it means that merge 
 request history has been fetched for that project.
 
 The tool consistently listens for changes in the directory and if one file for a specific project is deleted, than the 
@@ -211,10 +211,10 @@ tool will automatically fetch the merge request history for that project and cre
 To configure variables inside a project you must do the following:
 1. While inside the project click on Settings -> CI/CD
 2. Go to the Variables section and click "Expand"
-3. Click on the "Add Variable button"
+3. Click on the "Add Variable" button
 4. Fill in the "Key" and "Value" fields and then click the "Add Variable" button
 
-The key of the variables is the name that should be configured in the application.properties file for variable name 
+The key of the variable is the name that should be configured in the application.properties file for variable name 
 properties (gitlab.variables.publishMergeRequestVarName, gitlab.variables.destinationWorkspaceVarName,
 gitlab.variables.useSSHFormatVarName).
 
