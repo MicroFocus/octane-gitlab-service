@@ -3,11 +3,13 @@
 Project status: [![Build status](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)
 
 ## Relevant links
+
 -	**Download the most recent LTS version of the service** at [Github releases](https://github.com/MicroFocus/octane-gitlab-service/releases)
 -	**Check the open issues (and add new issues)** at [Github issues](https://github.com/MicroFocus/octane-gitlab-service/issues)
 
 
 # ALM Octane GitLab CI service
+
 This service integrates ALM Octane with GitLab, enabling ALM Octane to display GitLab build pipelines and track build and test run results.
 
 
@@ -17,6 +19,7 @@ The service communicates both with the GitLab server and the Octane server.
 Both sides of communication must be reachable. 
 
 ##### Communication with Gitlab:
+
 * The service sends an API requests to GitLab server.  
 For example: check permission, get project list, get test results, run project.  
 
@@ -29,6 +32,7 @@ _**Note that if the service is down or unavailable, the data will be lost and no
 
 
 ##### Communication with Octane:
+
 The service uses the Octane [CI SDK](https://github.com/MicroFocus/octane-ci-java-sdk) for this.
 
 
@@ -36,6 +40,7 @@ _**Note that this solution does not support GitLab on SaaS**_
 
 
 ## Installation and configuration instructions
+
 1. Create a new directory to serve as the installation target. This can be on any machine that can access GitLab. (If GitLab is behind a firewall, this machine must also be behind it.)
 2. Download the octane-gitlab-service-\<version\>.jar file from the release assets and copy it to the target directory.
 3. In ALM Octane, create an API access Client ID and Client secret with the CI/CD Integration role.
@@ -175,7 +180,6 @@ If the variable is not defined in Gitlab or if it is set to anything but true th
 Octane for the current project.
 
 ##### gitlab.variables.destinationWorkspaceVarName
-
 The name of the gitlab defined variable that specifies the destination workspace for the sent pull requests.
 
 If the project has merge request sending set to true (the publishMergeRequest variable), but does not have this variable
@@ -185,7 +189,6 @@ Rule of thumb: Where publishMergeRequest variable is set to true destinationWork
 in order for the tool to work correctly.
 
 ##### gitlab.variables.useSSHFormatVarName
-
 The name of the gitlab defined variable that specifies which url of the repo should be used for cloning.
 
 The values must be boolean values (true of false).
@@ -194,7 +197,6 @@ If the value is set to true the ssh url will be used. Otherwise, if the value is
 defined at all for the project, then the http url will be used by default.
 
 ##### gitlab.mergeRequestHistoryFolderPath
-
 The path to a folder where merge request history fetching statuses should be kept for each of the projects.
 
 If the folder does not exist, then it will be created automatically.
@@ -219,6 +221,7 @@ properties (gitlab.variables.publishMergeRequestVarName, gitlab.variables.destin
 gitlab.variables.useSSHFormatVarName).
 
 ## Usage instructions
+
 1. Create a new GitLab CI server entity in ALM Octane.
 2. Go to the Pipelines module.
 3. Create a new pipeline from the new GitLab CI server.
@@ -289,6 +292,7 @@ you can use the “server.webhook.route.url” property to fix your environment.
  
 
 ### GitLab Runner HTTP(S) proxy
+
 GitLab uses registered runners for running pipelines. Runners are registered as described in this article: https://docs.gitlab.com/runner/register/.
 If a runner communicates with this integration service over a network that requires HTTP(S) proxy settings, an easy way to set the proxy is to add it to the runner’s registration entry.
 
@@ -320,6 +324,7 @@ In order to set the HTTP(S) proxy, an “environment” row should be added to t
 After adding the proxy settings, restart the gitlab-runner service.
 
 ### Logging (Log4J 2 Configuration)
+
 The project supports Log4J 2 configuration. In application.properties use the property below for specifying the Log4J 2 configuration file.
 ```
 logging.config
@@ -362,11 +367,13 @@ Below is an example of a Log4J 2 XML configuration:
 ``` 
 
 ### Allowing requests to the local network
+
 If the GitLab server and the octane-gitlab-service app both run on the same network, you need to enable "Allow requests to the local network from hooks and services" as follows:
 - Open the [your_gitlab_server]/admin/application_settings page.
 - In the “Outbound requests” section, check the "Allow requests to the local network from hooks and services" checkbox.
 
 ### SSL error 
+
 If getting the following error in the log:
 "javax.net.ssl.SSLHandshakeException: sun.security.validator.ValidatorException: PKIX path building failed:   
 sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target"
