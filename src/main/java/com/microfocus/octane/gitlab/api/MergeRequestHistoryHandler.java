@@ -9,11 +9,13 @@ import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Commit;
+import org.gitlab4j.api.models.Diff;
 import org.gitlab4j.api.models.MergeRequest;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +29,9 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -52,8 +56,6 @@ public class MergeRequestHistoryHandler {
         this.watchService = createWatchService();
         this.watchPath = Paths.get(applicationSettings.getConfig().getMergeRequestHistoryFolderPath());
         registerWatchPath();
-        executeFirstScan();
-        startListening();
     }
 
     private WatchService createWatchService() {
@@ -76,7 +78,7 @@ public class MergeRequestHistoryHandler {
         }
     }
 
-    private void executeFirstScan() {
+    public void executeFirstScan() {
         try {
             List<Project> gitLabProjects = gitLabApi.getProjectApi().getProjects().stream()
                     .filter(project -> {
@@ -105,7 +107,7 @@ public class MergeRequestHistoryHandler {
         }
     }
 
-    private void startListening() {
+    public void startListening() {
         taskExecutor.execute(() -> {
             WatchKey key;
             try {
@@ -154,15 +156,24 @@ public class MergeRequestHistoryHandler {
 
             mergeRequests.forEach(mergeRequest -> {
                 List<Commit> mergeRequestCommits = new ArrayList<>();
+                Map<String, List<Diff>> mrCommitDiffs = new HashMap<>();
                 try {
                     mergeRequestCommits =
                             gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
+                    mergeRequestCommits.forEach(commit -> {
+                        try {
+                            List<Diff> diffs = gitLabApi.getCommitsApi().getDiff(project.getId(), commit.getId());
+                            mrCommitDiffs.put(commit.getId(), diffs);
+                        } catch (GitLabApiException e) {
+                            log.warn(e.getMessage());
+                        }
+                    });
                 } catch (GitLabApiException e) {
                     log.warn(e.getMessage(), e);
                 }
 
-                PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, repoUrl,
-                        destinationWSVar.get().getValue());
+                PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, mrCommitDiffs,
+                        repoUrl, destinationWSVar.get().getValue());
             });
         }
     }

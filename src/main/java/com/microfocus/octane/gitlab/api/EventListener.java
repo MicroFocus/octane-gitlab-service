@@ -56,8 +56,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
@@ -218,9 +220,20 @@ public class EventListener {
 
         int mergeRequestId = getEventTargetObjectId(event);
         MergeRequest mergeRequest = gitLabApi.getMergeRequestApi().getMergeRequest(project.getId(), mergeRequestId);
-        List<Commit> mergeRequestCommits = gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
 
-        PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, repoUrl,
+        List<Commit> mergeRequestCommits = gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
+        Map<String, List<Diff>> mrCommitDiffs = new HashMap<>();
+
+        mergeRequestCommits.forEach(commit -> {
+            try {
+                List<Diff> diffs = gitLabApi.getCommitsApi().getDiff(project.getId(), commit.getId());
+                mrCommitDiffs.put(commit.getId(), diffs);
+            } catch (GitLabApiException e) {
+                log.warn(e.getMessage());
+            }
+        });
+
+        PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, mrCommitDiffs, repoUrl,
                 destinationWSVar.get().getValue());
 
         return Response.ok().build();

@@ -3,6 +3,7 @@ package com.microfocus.octane.gitlab.app;
 import com.hp.octane.integrations.OctaneConfiguration;
 import com.hp.octane.integrations.OctaneSDK;
 import com.hp.octane.integrations.exceptions.OctaneConnectivityException;
+import com.microfocus.octane.gitlab.api.MergeRequestHistoryHandler;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
 import com.microfocus.octane.gitlab.services.OctaneServices;
 import org.apache.logging.log4j.LogManager;
@@ -54,6 +55,11 @@ public class Application {
 
             tryToConnectToOctane(octaneServices);
             OctaneSDK.addClient(octaneServices.getOctaneConfiguration(), OctaneServices.class);
+
+            MergeRequestHistoryHandler mrHistoryHandler = context.getBean(MergeRequestHistoryHandler.class);
+            mrHistoryHandler.executeFirstScan();
+            mrHistoryHandler.startListening();
+
             System.out.println("Connection to Octane was successful. gitlab application is ready...");
 
 

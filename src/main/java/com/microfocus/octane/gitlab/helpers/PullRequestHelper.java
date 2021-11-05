@@ -3,18 +3,28 @@ package com.microfocus.octane.gitlab.helpers;
 import com.hp.octane.integrations.OctaneSDK;
 import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.scm.PullRequest;
+import com.hp.octane.integrations.dto.scm.SCMChange;
 import com.hp.octane.integrations.dto.scm.SCMCommit;
 import com.hp.octane.integrations.dto.scm.SCMRepository;
 import com.hp.octane.integrations.dto.scm.SCMType;
+import com.hp.octane.integrations.services.entities.QueryHelper;
+import com.hp.octane.integrations.services.pullrequestsandbranches.bitbucketserver.pojo.EntityCollection;
 import com.hp.octane.integrations.services.pullrequestsandbranches.factory.PullRequestFetchParameters;
+import com.hp.octane.integrations.uft.items.OctaneStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.gitlab4j.api.GitLabApi;
+import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Commit;
+import org.gitlab4j.api.models.Diff;
 import org.gitlab4j.api.models.MergeRequest;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -68,30 +78,56 @@ public class PullRequestHelper {
         });
     }
 
-    public static void convertAndSendMergeRequestToOctane(MergeRequest mergeRequest, List<Commit> mrCommits,
-                                                          String repoUrl, String destinationWS) {
+    public static void convertAndSendMergeRequestToOctane(MergeRequest mergeRequest, List<Commit> mrCommits, Map<String,
+            List<Diff>> mrCommitDiffs, String repoUrl, String destinationWS) {
         SCMRepository sourceScmRepository =
                 PullRequestHelper.createGitScmRepository(repoUrl, mergeRequest.getSourceBranch());
         SCMRepository targetScmRepository =
                 PullRequestHelper.createGitScmRepository(repoUrl, mergeRequest.getTargetBranch());
 
-        List<SCMCommit> pullRequestCommits = convertMergeRequestCommits(mrCommits);
+        List<SCMCommit> pullRequestCommits = convertMergeRequestCommits(mrCommits, mrCommitDiffs);
 
         PullRequest pullRequest = PullRequestHelper.createPullRequest(mergeRequest, sourceScmRepository,
                 targetScmRepository, pullRequestCommits);
 
-        PullRequestHelper.sendPullRequestToOctane(repoUrl, pullRequest, destinationWS);
+        sendPullRequestToOctane(repoUrl, pullRequest, destinationWS);
     }
 
-    public static List<SCMCommit> convertMergeRequestCommits(List<Commit> commits) {
+    public static List<SCMCommit> convertMergeRequestCommits(List<Commit> commits, Map<String, List<Diff>> commitDiffs) {
         return commits.stream()
-                .map(commit -> DTOFactory.getInstance().newDTO(SCMCommit.class)
-                        .setRevId(commit.getId())
-                        .setComment(commit.getMessage())
-                        .setUser(commit.getCommitterName())
-                        .setUserEmail(commit.getCommitterEmail())
-                        .setTime(Objects.isNull(commit.getTimestamp()) ? null : commit.getTimestamp().getTime())
-                        .setParentRevId(commit.getParentIds().isEmpty() ? null : commit.getParentIds().get(0)))
+                .map(commit -> {
+                    SCMCommit cm = dtoFactory.newDTO(SCMCommit.class);
+                    cm.setTime(commit.getTimestamp() != null ? commit.getTimestamp().getTime() : new Date().getTime());
+                    cm.setUser(commit.getCommitterName());
+                    cm.setUserEmail(commit.getCommitterEmail());
+                    cm.setRevId(commit.getId());
+                    cm.setParentRevId(Objects.isNull(commit.getParentIds())
+                            ? null
+                            : (commit.getParentIds().isEmpty() ? null : commit.getParentIds().get(0)));
+                    cm.setComment(commit.getMessage());
+
+                    List<Diff> diffs = commitDiffs.get(commit.getId()) != null
+                            ? commitDiffs.get(commit.getId())
+                            : new ArrayList<>();
+
+                    List<SCMChange> changes = new ArrayList<>();
+                    diffs.forEach(d -> {
+                        SCMChange change = dtoFactory.newDTO(SCMChange.class);
+                        change.setFile(d.getNewPath());
+                        change.setType(d.getNewFile() ? "add" : d.getDeletedFile() ? "delete" : "edit");
+                        changes.add(change);
+                    });
+
+                    cm.setChanges(changes);
+                    return cm;
+                })
+//                DTOFactory.getInstance().newDTO(SCMCommit.class)
+//                        .setRevId(commit.getId())
+//                        .setComment(commit.getMessage())
+//                        .setUser(commit.getCommitterName())
+//                        .setUserEmail(commit.getCommitterEmail())
+//                        .setTime(Objects.isNull(commit.getTimestamp()) ? null : commit.getTimestamp().getTime())
+//                        .setParentRevId(commit.getParentIds().isEmpty() ? null : commit.getParentIds().get(0)))
                 .collect(Collectors.toList());
     }
 
