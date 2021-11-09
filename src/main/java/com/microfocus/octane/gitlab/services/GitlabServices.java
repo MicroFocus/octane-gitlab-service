@@ -56,6 +56,7 @@ public class GitlabServices {
     private GitLabApi gitLabApi;
     private boolean cleanupOnly =false;
     private  ScheduledExecutorService executor;
+    private URL webhookURL;
 
     @Autowired
     public GitlabServices(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper,ApplicationArguments applicationArguments) {
@@ -69,7 +70,7 @@ public class GitlabServices {
     @PostConstruct
     private void init() throws MalformedURLException {
         //Adding webHooks
-        URL webhookListenerUrl = getWebHookListenerURL();
+        initWebHookListenerURL();
 
         gitLabApi = gitLabApiWrapper.getGitLabApi();
         try {
@@ -80,24 +81,14 @@ public class GitlabServices {
                 log.info("start with cleanup process");
                 for (Project project : projects) {
                     if (gitLabApiWrapper.isUserHasPermissionForProject(project, currentUser)) {
-                            deleteWebHooks(webhookListenerUrl, project);
+                            deleteWebHooks(project.getId());
                     }
                 }
             }else {
 
                 for (Project project : projects) {
                     if (gitLabApiWrapper.isUserHasPermissionForProject(project, currentUser)) {
-                        try {
-                            deleteWebHooks(webhookListenerUrl, project);
-                            ProjectHook hook = new ProjectHook();
-                            hook.setJobEvents(true);
-                            hook.setPipelineEvents(true);
-                            hook.setMergeRequestsEvents(true);
-                            gitLabApi.getProjectApi().addHook(project.getId(), webhookListenerUrl.toString(), hook, false, generateNewToken());
-                        } catch (GitLabApiException e) {
-                            log.warn("Failed to create a GitLab web hook", e);
-                            throw e;
-                        }
+                        addWebHookToProject(project.getId(),true);
                     }
                 }
             }
@@ -112,7 +103,25 @@ public class GitlabServices {
         executor.scheduleAtFixedRate(new TestResultsCleanUpRunnable(applicationSettings.getConfig().getTestResultsOutputFolderPath()),  TestResultsCleanUpRunnable.INTERVAL, TestResultsCleanUpRunnable.INTERVAL, TimeUnit.MINUTES);
     }
 
-    public static String generateNewToken() {
+    private Boolean addWebHookToProject(Object projectId, boolean deleteOldWebHook) throws GitLabApiException {
+
+        try {
+            if(deleteOldWebHook){
+                deleteWebHooks(projectId);
+            }
+            ProjectHook hook = new ProjectHook();
+            hook.setJobEvents(true);
+            hook.setPipelineEvents(true);
+            gitLabApi.getProjectApi().addHook(projectId, webhookURL.toString(), hook, false, generateNewToken());
+        } catch (GitLabApiException e){
+            log.warn("Failed to add web hooks to project: "+projectId, e);
+            throw e;
+        }
+
+        return true;
+    }
+
+    private static String generateNewToken() {
         final SecureRandom secureRandom = new SecureRandom();
         final Base64.Encoder base64Encoder = Base64.getUrlEncoder();
         byte[] randomBytes = new byte[24];
@@ -120,42 +129,41 @@ public class GitlabServices {
         return base64Encoder.encodeToString(randomBytes);
     }
 
-    private URL getWebHookListenerURL() throws MalformedURLException {
-        URL serverBaseUrl = applicationSettings.getConfig().getServerWebhookRouteUrl() != null?
+
+    private void deleteWebHooks(Object projectIdOrPath) throws GitLabApiException {
+        for (ProjectHook hook : gitLabApi.getProjectApi().getHooks(projectIdOrPath)) {
+            if (hook.getUrl().equals(webhookURL.toString())) {
+                try {
+                    gitLabApi.getProjectApi().deleteHook(projectIdOrPath, hook.getId());
+                } catch (GitLabApiException e) {
+                    log.warn("Failed to delete a GitLab web hook", e);
+                }
+            }
+        }
+    }
+
+    private void initWebHookListenerURL() throws MalformedURLException {
+        URL serverBaseUrl = (applicationSettings.getConfig().getServerWebhookRouteUrl() != null && !applicationSettings.getConfig().getServerWebhookRouteUrl().isEmpty())?
                 new URL(applicationSettings.getConfig().getServerWebhookRouteUrl()) :
                 new URL(applicationSettings.getConfig().getServerBaseUrl());
 
-        URL webhookListenerUrl = new URL(serverBaseUrl, "events");
-        return webhookListenerUrl;
+        webhookURL= new URL(serverBaseUrl, "events");
     }
 
     @PreDestroy
     private void stop() {
         try {
             log.info("Destroying GitLab webhooks ...");
-            URL webhookListenerUrl = getWebHookListenerURL();
 
             List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
             User currentUser = gitLabApi.getUserApi().getCurrentUser();
             for (Project project : projects) {
                 if (gitLabApiWrapper.isUserHasPermissionForProject(project,currentUser)) {
-                    deleteWebHooks(webhookListenerUrl, project);
+                    deleteWebHooks(project.getId());
                 }
             }
         } catch (Exception e) {
             log.warn("Failed to destroy GitLab webhooks", e);
-        }
-    }
-
-    private void deleteWebHooks(URL webhookListenerUrl, Project project) throws GitLabApiException {
-        for (ProjectHook hook : gitLabApi.getProjectApi().getHooks(project.getId())) {
-            if (hook.getUrl().equals(webhookListenerUrl.toString())) {
-                try {
-                    gitLabApi.getProjectApi().deleteHook(project.getId(), hook.getId());
-                } catch (GitLabApiException e) {
-                    log.warn("Failed to delete a GitLab web hook", e);
-                }
-            }
         }
     }
 
@@ -241,17 +249,26 @@ public class GitlabServices {
 
     PipelineNode createStructure(String buildId) {
         ParsedPath project = new ParsedPath(buildId, gitLabApi, PathType.MULTI_BRUNCH);
-        if (project.isMultiBranch()) {
-            return dtoFactory.newDTO(PipelineNode.class)
-                    .setJobCiId(project.getFullPathOfPipeline().toLowerCase())
-                    .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT)
+
+        //add a webhook to new Octane pipeline (gitlab project) in Octane
+        try{
+            if (project.isMultiBranch()) {
+                addWebHookToProject(project.getFullPathOfProject(),true);
+                 return dtoFactory.newDTO(PipelineNode.class)
+                        .setJobCiId(project.getFullPathOfPipeline().toLowerCase())
+                        .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT)
+                        .setParameters(getParameters(project));
+            }
+            project = new ParsedPath(buildId, gitLabApi, PathType.PIPELINE);
+            addWebHookToProject(project.getId(),true);
+            return   dtoFactory.newDTO(PipelineNode.class)
+                    .setJobCiId(project.getFullPathOfPipelineWithBranch().toLowerCase())
+                    .setName(project.getCurrentBranchOrDefault())
                     .setParameters(getParameters(project));
+        } catch (GitLabApiException e){
+            log.error("unable to update webhook when create a pipeline in Octane for project:"+ project.getDisplayName(),e);
+            return null;
         }
-        project = new ParsedPath(buildId, gitLabApi, PathType.PIPELINE);
-        return dtoFactory.newDTO(PipelineNode.class)
-                .setJobCiId(project.getFullPathOfPipelineWithBranch().toLowerCase())
-                .setName(project.getCurrentBranchOrDefault())
-                .setParameters(getParameters(project));
     }
 
     public List<CIParameter> getParameters(ParsedPath project) {
