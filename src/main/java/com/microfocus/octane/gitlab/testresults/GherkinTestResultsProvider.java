@@ -37,7 +37,7 @@ public class GherkinTestResultsProvider {
             testResultsRootFolder  = rootFolderPath;
         }
         if(TestResultsHelper.isFilePatternExist(applicationSettings.getConfig().getGitlabGherkinTestResultsFilePattern())){
-            testResultsFilePattern = applicationSettings.getConfig().getGitlabTestResultsFilePattern();
+            testResultsFilePattern = applicationSettings.getConfig().getGitlabGherkinTestResultsFilePattern();
         }
     }
 
