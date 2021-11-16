@@ -5,6 +5,7 @@ import com.hp.octane.integrations.OctaneSDK;
 import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.causes.CIEventCause;
 import com.hp.octane.integrations.dto.causes.CIEventCauseType;
+import com.hp.octane.integrations.dto.coverage.CoverageReportType;
 import com.hp.octane.integrations.dto.events.CIEvent;
 import com.hp.octane.integrations.dto.events.CIEventType;
 import com.hp.octane.integrations.dto.events.MultiBranchType;
@@ -49,9 +50,12 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -157,13 +161,14 @@ public class EventListener {
 
                     if(job.getArtifactsFile() != null) {
 
+                        sendCodeCoverage(projectId, project, job);
+
                         GherkinTestResultsProvider gherkinTestResultsProvider = GherkinTestResultsProvider.getInstance(applicationSettings);
                         boolean isGherkinTestsExist =
                                 gherkinTestResultsProvider.createTestList(project,job,gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
 
                         //looking for Regular tests
                         if(!isGherkinTestsExist) {
-
                             JunitTestResultsProvider testResultsProduce =  JunitTestResultsProvider.getInstance(applicationSettings);
                             boolean testResultsExist = testResultsProduce.createTestList(project,job,
                                     gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
@@ -175,7 +180,6 @@ public class EventListener {
                                 return Response.ok().entity(warning).build();
                             }
                         }
-
                     }
                 }
             }
@@ -184,6 +188,28 @@ public class EventListener {
         }
         log.traceExit();
         return Response.ok().build();
+    }
+
+    private void sendCodeCoverage(Integer projectId, Project project, Job job) throws GitLabApiException, IOException {
+        Optional<Variable> coverageReportFilePath = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
+                applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
+
+        if (coverageReportFilePath.isEmpty()) {
+            log.info("Variable for JaCoCo coverage report path not set. No coverage injection for this pipeline.");
+        } else {
+            InputStream codeCoverageReportFile = gitLabApi.getJobApi()
+                    .downloadSingleArtifactsFile(projectId, job.getId(),
+                            Paths.get(coverageReportFilePath.get().getValue()));
+
+            String octaneJobId = project.getPathWithNamespace().toLowerCase() + "/" + job.getName();
+            String octaneBuildId = job.getId().toString();
+
+            OctaneSDK.getClients().forEach(client ->
+                    client.getCoverageService()
+                            .pushCoverage(octaneJobId, octaneBuildId, CoverageReportType.JACOCOXML,
+                                    codeCoverageReportFile));
+            codeCoverageReportFile.close();
+        }
     }
 
     private Response handleMergeRequestEvent(JSONObject event) throws GitLabApiException {

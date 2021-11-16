@@ -35,10 +35,10 @@ public class ConfigStructure {
     @Value("${gitlab.personalAccessToken:#{null}}")
     private String gitlabPersonalAccessToken;
 
-    @Value("${gitlab.testResultsFilePattern:**.xml}")
+    @Value("${gitlab.testResultsFilePattern:glob:**.xml}")
     private String gitlabTestResultsFilePattern;
 
-    @Value("${gitlab.gherkinTestResultsFilePattern:#{null}l}")
+    @Value("${gitlab.gherkinTestResultsFilePattern:#{null}}")
     private String gitlabGherkinTestResultsFilePattern;
 
     @Value("${gitlab.testResultsOutputFolderPath:#{null}}")
@@ -91,6 +91,9 @@ public class ConfigStructure {
 
     @Value("${gitlab.mergeRequestHistoryFolderPath:#{null}}")
     private String mergeRequestHistoryFolderPath;
+
+    @Value("${gitlab.variables.generatedCoverageReportFilePathVarName:#{null}}")
+    private String generatedCoverageReportFilePathVariableName;
 
     @PostConstruct
     public void init() {
@@ -208,5 +211,9 @@ public class ConfigStructure {
 
     public String getMergeRequestHistoryFolderPath() {
         return mergeRequestHistoryFolderPath;
+    }
+
+    public String getGeneratedCoverageReportFilePathVariableName() {
+        return generatedCoverageReportFilePathVariableName;
     }
 }
