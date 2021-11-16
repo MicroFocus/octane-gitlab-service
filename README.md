@@ -202,7 +202,7 @@ The name of the gitlab defined variable that specifies the path to the generated
 
 This path should be the one that is configured in the pipeline coverage goal step.
 
-Example value of the variable content: target/jacoco/jacoco.xml
+Example value of the variable content: target/site/jacoco/jacoco.xml
 
 ##### gitlab.mergeRequestHistoryFolderPath
 The path to a folder where merge request history fetching statuses should be kept for each of the projects.
