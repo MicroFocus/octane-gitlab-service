@@ -35,10 +35,11 @@ public class ConfigStructure {
     @Value("${gitlab.personalAccessToken:#{null}}")
     private String gitlabPersonalAccessToken;
 
-    @Value("${gitlab.testResultsFilePattern:**.xml}")
+    @Value("${gitlab.testResultsFilePattern:glob:**.xml}")
     private String gitlabTestResultsFilePattern;
 
-    @Value("${gitlab.gherkinTestResultsFilePattern:#{null}l}")
+
+    @Value("${gitlab.gherkinTestResultsFilePattern:#{null}}")
     private String gitlabGherkinTestResultsFilePattern;
 
     @Value("${gitlab.testResultsOutputFolderPath:#{null}}")
