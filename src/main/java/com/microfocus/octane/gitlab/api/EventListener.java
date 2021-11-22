@@ -197,18 +197,20 @@ public class EventListener {
         if (coverageReportFilePath.isEmpty()) {
             log.info("Variable for JaCoCo coverage report path not set. No coverage injection for this pipeline.");
         } else {
-            InputStream codeCoverageReportFile = gitLabApi.getJobApi()
-                    .downloadSingleArtifactsFile(projectId, job.getId(),
-                            Paths.get(coverageReportFilePath.get().getValue()));
-
             String octaneJobId = project.getPathWithNamespace().toLowerCase() + "/" + job.getName();
             String octaneBuildId = job.getId().toString();
 
-            OctaneSDK.getClients().forEach(client ->
+            OctaneSDK.getClients().forEach(client -> {
+                try (InputStream codeCoverageReportFile = gitLabApi.getJobApi()
+                        .downloadSingleArtifactsFile(projectId, job.getId(),
+                                Paths.get(coverageReportFilePath.get().getValue()))) {
                     client.getCoverageService()
                             .pushCoverage(octaneJobId, octaneBuildId, CoverageReportType.JACOCOXML,
-                                    codeCoverageReportFile));
-            codeCoverageReportFile.close();
+                                    codeCoverageReportFile);
+                } catch (GitLabApiException | IOException exception) {
+                    log.error(exception.getMessage());
+                }
+            });
         }
     }
 
