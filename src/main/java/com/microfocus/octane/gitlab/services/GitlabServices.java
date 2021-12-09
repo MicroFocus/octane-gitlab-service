@@ -21,7 +21,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
-import org.gitlab4j.api.models.*;
+import org.gitlab4j.api.models.AccessLevel;
+import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.ProjectFilter;
+import org.gitlab4j.api.models.ProjectHook;
+import org.gitlab4j.api.models.User;
+import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -33,7 +38,9 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -81,7 +88,6 @@ public class GitlabServices {
 
                 for (Project project : projects) {
                     if (gitLabApiWrapper.isUserHasPermissionForProject(project, currentUser)) {
-
                         addWebHookToProject(project.getId(),true);
                     }
                 }
@@ -106,13 +112,21 @@ public class GitlabServices {
             ProjectHook hook = new ProjectHook();
             hook.setJobEvents(true);
             hook.setPipelineEvents(true);
-            gitLabApi.getProjectApi().addHook(projectId, webhookURL.toString(), hook, false, "");
+            gitLabApi.getProjectApi().addHook(projectId, webhookURL.toString(), hook, false, generateNewToken());
         } catch (GitLabApiException e){
             log.warn("Failed to add web hooks to project: "+projectId, e);
             throw e;
         }
 
         return true;
+    }
+
+    private static String generateNewToken() {
+        final SecureRandom secureRandom = new SecureRandom();
+        final Base64.Encoder base64Encoder = Base64.getUrlEncoder();
+        byte[] randomBytes = new byte[24];
+        secureRandom.nextBytes(randomBytes);
+        return base64Encoder.encodeToString(randomBytes);
     }
 
 

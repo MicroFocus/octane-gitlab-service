@@ -3,6 +3,7 @@ package com.microfocus.octane.gitlab.app;
 import com.hp.octane.integrations.OctaneConfiguration;
 import com.hp.octane.integrations.OctaneSDK;
 import com.hp.octane.integrations.exceptions.OctaneConnectivityException;
+import com.microfocus.octane.gitlab.api.MergeRequestHistoryHandler;
 import com.microfocus.octane.gitlab.helpers.PasswordEncryption;
 import com.microfocus.octane.gitlab.services.OctaneServices;
 import org.apache.logging.log4j.LogManager;
@@ -10,7 +11,10 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
@@ -22,6 +26,11 @@ import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.encrypt;
 @ComponentScan("com.microfocus.octane.gitlab")
 public class Application {
     private static final Logger log = LogManager.getLogger(Application.class);
+
+    @Bean
+    public TaskExecutor taskExecutor() {
+        return new SimpleAsyncTaskExecutor();
+    }
 
     public static void main(String[] args) throws GeneralSecurityException, IOException {
         if (args.length > 0 && args[0].equals("encrypt")) {
@@ -46,6 +55,11 @@ public class Application {
 
             tryToConnectToOctane(octaneServices);
             OctaneSDK.addClient(octaneServices.getOctaneConfiguration(), OctaneServices.class);
+
+            MergeRequestHistoryHandler mrHistoryHandler = context.getBean(MergeRequestHistoryHandler.class);
+            mrHistoryHandler.executeFirstScan();
+            mrHistoryHandler.startListening();
+
             System.out.println("Connection to Octane was successful. gitlab application is ready...");
 
 
