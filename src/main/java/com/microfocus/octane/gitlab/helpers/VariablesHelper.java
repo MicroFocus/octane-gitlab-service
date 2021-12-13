@@ -128,16 +128,13 @@ public class VariablesHelper {
 
         List<String> groupsFullPath = ParsedPath.getGroupFullPathFromProject(project.getPathWithNamespace());
         groupsFullPath.forEach(group -> {
-
-        });
-        for(String group :groupsFullPath){
             try {
                 List<Variable> variablesOnGroup = gitLabApi.getGroupApi().getVariables(group);
                 variablesOnGroup.forEach(variable -> variablesKeyValuePairs.put(variable.getKey(), variable.getValue()));
-            }catch (GitLabApiException e){
-                log.error("can not find variables for the group:"+group);
+            } catch (GitLabApiException e) {
+                log.error("can not find variables for the group:" + group);
             }
-        }
+        });
 
         return variablesKeyValuePairs;
     }
