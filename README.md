@@ -68,11 +68,12 @@ gitlab.gherkinTestResultsFilePattern=<optional:'glob:pattern' or 'regex:pattern'
 gitlab.testResultsOutputFolderPath=<optional: place to save test results before sending it to Octane.>
 gitlab.variables.pipeline.usage=<optional: comma separated list of project,groups,instance>
 gitlab.ci.service.can.run.pipeline=<optional: If the service can run pipelines from ALM Octane. true by default>
-gitlab.variables.publishMergeRequestVarName=<mandatory: Name of the variable containing a boolean value that specifies if merge requests will be published into Octane from the current project>
-gitlab.variables.destinationWorkspaceVarName=<mandatory: Name of the variable containing a string value that specifies the destination workspace where merge requests will be published into Octane from the current project>
-gitlab.variables.useSSHFormatVarName=<mandatory: Name of the variable containing a boolean value that specifies if the clone url for the current proeject should be in SSH format or not>
-gitlab.generatedCoverageReportFilePathVarName=<mandatory: Name of the variable containing the path of the generated JaCoCo coverage report file as configured in the pipeline>
-gitlab.mergeRequestHistoryFolderPath=<mandatory: Path of directory to store fetch history state for projects>
+
+gitlab.codeCoverage.generatedCoverageReportFilePathVarName=<optional: Name of the variable containing the path of the generated JaCoCo coverage report file as configured in the pipeline. Default value: jacocoReportPath>
+gitlab.mergeRequests.variables.publishMergeRequestVarName=<optional: Name of the variable containing a boolean value that specifies if merge requests will be published into Octane from the current project. Default value: 'publishMergeRequests'>
+gitlab.mergeRequests.variables.destinationWorkspaceVarName=<optional: Name of the variable containing a string value that specifies the destination workspace where merge requests will be published into Octane from the current project. Default value: 'destinationWorkspace'>
+gitlab.mergeRequests.variables.useSSHFormatVarName=<optional: Name of the variable containing a boolean value that specifies if the clone url for the current proeject should be in SSH format or not. Default value: 'useSSHFormat'>
+gitlab.mergeRequests.mergeRequestHistoryFolderPath=<optional: Path of directory to store fetch history state for projects. Default value: 'projectHistory'>
 
 # HTTP(S) proxy oriented properties
 # =================================

@@ -38,6 +38,10 @@ public class ConfigStructure {
     @Value("${gitlab.testResultsFilePattern:glob:**.xml}")
     private String gitlabTestResultsFilePattern;
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> mergeRequestPublishing
     @Value("${gitlab.gherkinTestResultsFilePattern:#{null}}")
     private String gitlabGherkinTestResultsFilePattern;
 
@@ -80,19 +84,19 @@ public class ConfigStructure {
     @Value("${gitlab.ci.service.can.run.pipeline:#{null}}")
     private String canRunPipeline = "true";
 
-    @Value("${gitlab.variables.publishMergeRequestVarName:#{null}}")
+    @Value("${gitlab.mergeRequests.variables.publishMergeRequestVarName:publishMergeRequests}")
     private String publishMergeRequestsVariableName;
 
-    @Value("${gitlab.variables.destinationWorkspaceVarName:#{null}}")
+    @Value("${gitlab.mergeRequests.variables.destinationWorkspaceVarName:destinationWorkspace")
     private String destinationWorkspaceVariableName;
 
-    @Value("${gitlab.variables.useSSHFormatVarName:#{null}}")
+    @Value("${gitlab.mergeRequests.variables.useSSHFormatVarName:useSSHFormat")
     private String useSSHFormatVariableName;
 
-    @Value("${gitlab.mergeRequestHistoryFolderPath:#{null}}")
+    @Value("${gitlab.mergeRequests.mergeRequestHistoryFolderPath:projectHistory")
     private String mergeRequestHistoryFolderPath;
 
-    @Value("${gitlab.variables.generatedCoverageReportFilePathVarName:#{null}}")
+    @Value("${gitlab.codeCoverage.variables.generatedCoverageReportFilePathVarName:jacocoReportPath}")
     private String generatedCoverageReportFilePathVariableName;
 
     @PostConstruct
@@ -103,10 +107,6 @@ public class ConfigStructure {
         mandatoryGetters.add(Pair.of("octane.apiClientSecret", this::getOctaneApiClientSecret));
         mandatoryGetters.add(Pair.of("gitlab.location", this::getGitlabLocation));
         mandatoryGetters.add(Pair.of("gitlab.personalAccessToken", this::getGitlabPersonalAccessToken));
-        mandatoryGetters.add(Pair.of("gitlab.variables.publishMergeRequestVarName", this::getPublishMergeRequestsVariableName));
-        mandatoryGetters.add(Pair.of("destinationWorkspaceVarName", this::getDestinationWorkspaceVariableName));
-        mandatoryGetters.add(Pair.of("gitlab.variables.useSSHFormatVarName", this::getUseSSHFormatVariableName));
-        mandatoryGetters.add(Pair.of("gitlab.mergeRequestHistoryFolderPath", this::getMergeRequestHistoryFolderPath));
         Set<String> validationErrors = new LinkedHashSet<>();
         mandatoryGetters.forEach(mg -> {
             if (mg.getValue().get() == null || mg.getValue().get().trim().isEmpty()) {
