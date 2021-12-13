@@ -38,10 +38,6 @@ public class ConfigStructure {
     @Value("${gitlab.testResultsFilePattern:glob:**.xml}")
     private String gitlabTestResultsFilePattern;
 
-<<<<<<< HEAD
-=======
-
->>>>>>> mergeRequestPublishing
     @Value("${gitlab.gherkinTestResultsFilePattern:#{null}}")
     private String gitlabGherkinTestResultsFilePattern;
 
