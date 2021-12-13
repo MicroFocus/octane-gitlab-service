@@ -83,13 +83,13 @@ public class ConfigStructure {
     @Value("${gitlab.mergeRequests.variables.publishMergeRequestVarName:publishMergeRequests}")
     private String publishMergeRequestsVariableName;
 
-    @Value("${gitlab.mergeRequests.variables.destinationWorkspaceVarName:destinationWorkspace")
+    @Value("${gitlab.mergeRequests.variables.destinationWorkspaceVarName:destinationWorkspace}")
     private String destinationWorkspaceVariableName;
 
-    @Value("${gitlab.mergeRequests.variables.useSSHFormatVarName:useSSHFormat")
+    @Value("${gitlab.mergeRequests.variables.useSSHFormatVarName:useSSHFormat}")
     private String useSSHFormatVariableName;
 
-    @Value("${gitlab.mergeRequests.mergeRequestHistoryFolderPath:projectHistory")
+    @Value("${gitlab.mergeRequests.mergeRequestHistoryFolderPath:projectHistory}")
     private String mergeRequestHistoryFolderPath;
 
     @Value("${gitlab.codeCoverage.variables.generatedCoverageReportFilePathVarName:jacocoReportPath}")
