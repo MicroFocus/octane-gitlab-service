@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
+import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.Variable;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -120,5 +121,21 @@ public class VariablesHelper {
         }
 
         return Optional.ofNullable(variable);
+    }
+
+    public static Map<String, String> getProjectGroupVariables(GitLabApi gitLabApi, Project project) {
+        Map<String, String> variablesKeyValuePairs = new HashMap<>();
+
+        List<String> groupsFullPath = ParsedPath.getGroupFullPathFromProject(project.getPathWithNamespace());
+        groupsFullPath.forEach(group -> {
+            try {
+                List<Variable> variablesOnGroup = gitLabApi.getGroupApi().getVariables(group);
+                variablesOnGroup.forEach(variable -> variablesKeyValuePairs.put(variable.getKey(), variable.getValue()));
+            } catch (GitLabApiException e) {
+                log.error("can not find variables for the group:" + group);
+            }
+        });
+
+        return variablesKeyValuePairs;
     }
 }
