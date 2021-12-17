@@ -197,24 +197,36 @@ public class EventListener {
         }
 
         Project project = gitLabApi.getProjectApi().getProject(event.getJSONObject("project").getInt("id"));
+        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project);
 
         Optional<Variable> publishMergeRequests = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                 config.getPublishMergeRequestsVariableName());
-        if (publishMergeRequests.isEmpty() || !Boolean.parseBoolean(publishMergeRequests.get().getValue())) {
+        if (((publishMergeRequests.isEmpty() || !Boolean.parseBoolean(publishMergeRequests.get().getValue())) &&
+                (!projectGroupVariables.containsKey(config.getPublishMergeRequestsVariableName()) ||
+                        !Boolean.parseBoolean(
+                                projectGroupVariables.get(config.getPublishMergeRequestsVariableName()))))) {
             return Response.ok().build();
         }
 
         Optional<Variable> destinationWSVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                 config.getDestinationWorkspaceVariableName());
-        if (destinationWSVar.isEmpty()) {
+        String destinationWS;
+
+        if (destinationWSVar.isEmpty() && !projectGroupVariables.containsKey(config.getDestinationWorkspaceVariableName())) {
             String err = "Variable for destination workspace has not been set for project with id" + project.getId();
             log.error(err);
             return Response.ok().entity(err).build();
+        } else if (destinationWSVar.isPresent()) {
+            destinationWS = destinationWSVar.get().getValue();
+        } else {
+            destinationWS = projectGroupVariables.get(config.getDestinationWorkspaceVariableName());
         }
 
         Optional<Variable> useSSHFormatVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                 config.getUseSSHFormatVariableName());
-        boolean useSSHFormat = useSSHFormatVar.isPresent() && Boolean.parseBoolean(useSSHFormatVar.get().getValue());
+        boolean useSSHFormat = useSSHFormatVar.isPresent() && Boolean.parseBoolean(useSSHFormatVar.get().getValue()) ||
+                projectGroupVariables.containsKey(config.getUseSSHFormatVariableName()) &&
+                        Boolean.parseBoolean(projectGroupVariables.get(config.getUseSSHFormatVariableName()));
 
         String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
 
@@ -234,7 +246,7 @@ public class EventListener {
         });
 
         PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, mrCommitDiffs, repoUrl,
-                destinationWSVar.get().getValue());
+                destinationWS);
 
         return Response.ok().build();
     }

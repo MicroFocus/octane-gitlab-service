@@ -15,7 +15,6 @@ import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
@@ -82,12 +81,19 @@ public class MergeRequestHistoryHandler {
         try {
             List<Project> gitLabProjects = gitLabApi.getProjectApi().getProjects().stream()
                     .filter(project -> {
+                        Map<String, String> projectGroupVariables =
+                                VariablesHelper.getProjectGroupVariables(gitLabApi, project);
+
                         Optional<Variable> shouldPublishToOctane =
                                 VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                                         applicationSettings.getConfig().getPublishMergeRequestsVariableName());
 
-                        return shouldPublishToOctane.isPresent()
-                                && Boolean.parseBoolean(shouldPublishToOctane.get().getValue());
+                        return (shouldPublishToOctane.isPresent() &&
+                                Boolean.parseBoolean(shouldPublishToOctane.get().getValue())) ||
+                                (projectGroupVariables.containsKey(
+                                        applicationSettings.getConfig().getPublishMergeRequestsVariableName()) &&
+                                        Boolean.parseBoolean(projectGroupVariables.get(applicationSettings.getConfig()
+                                                .getPublishMergeRequestsVariableName())));
                     }).collect(Collectors.toList());
 
             gitLabProjects.forEach(project -> {
@@ -136,21 +142,37 @@ public class MergeRequestHistoryHandler {
     private void sendMergeRequestsToOctane(Project project) throws GitLabApiException {
         log.info("Sending merge request history for project with id " + project.getId() + " to Octane.");
         List<MergeRequest> mergeRequests = gitLabApi.getMergeRequestApi().getMergeRequests(project.getId());
+        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project);
 
         Optional<Variable> destinationWSVar =
                 VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                         applicationSettings.getConfig().getDestinationWorkspaceVariableName());
 
-        if (destinationWSVar.isEmpty()) {
+        if (destinationWSVar.isEmpty() && !projectGroupVariables.containsKey(
+                applicationSettings.getConfig().getDestinationWorkspaceVariableName())) {
             String err = "Variable for destination workspace has not been set for project with id" +
                     project.getId();
             log.error(err);
         } else {
+            String destinationWS;
+
+            if (destinationWSVar.isPresent()) {
+                destinationWS = destinationWSVar.get().getValue();
+            } else {
+                destinationWS = projectGroupVariables.get(
+                        applicationSettings.getConfig().getDestinationWorkspaceVariableName());
+            }
+
             Optional<Variable> useSSHFormatVar =
                     VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                             applicationSettings.getConfig().getUseSSHFormatVariableName());
+
             boolean useSSHFormat =
-                    useSSHFormatVar.isPresent() && Boolean.parseBoolean(useSSHFormatVar.get().getValue());
+                    useSSHFormatVar.isPresent() && Boolean.parseBoolean(useSSHFormatVar.get().getValue()) ||
+                            projectGroupVariables.containsKey(
+                                    applicationSettings.getConfig().getUseSSHFormatVariableName()) &&
+                                    Boolean.parseBoolean(projectGroupVariables.get(
+                                            applicationSettings.getConfig().getUseSSHFormatVariableName()));
 
             String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
 
@@ -173,7 +195,7 @@ public class MergeRequestHistoryHandler {
                 }
 
                 PullRequestHelper.convertAndSendMergeRequestToOctane(mergeRequest, mergeRequestCommits, mrCommitDiffs,
-                        repoUrl, destinationWSVar.get().getValue());
+                        repoUrl, destinationWS);
             });
         }
     }
