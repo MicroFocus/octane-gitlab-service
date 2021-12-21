@@ -136,7 +136,11 @@ public class VariablesHelper {
                 List<Variable> variablesOnGroup = gitLabApi.getGroupApi().getVariables(group);
                 variablesOnGroup.forEach(variable -> variablesKeyValuePairs.put(variable.getKey(), variable.getValue()));
             } catch (GitLabApiException e) {
-                log.error("can not find variables for the group:" + group);
+                if("root".equalsIgnoreCase(group)){
+                    log.warn("can not find variables for the group:" + group);
+                }else {
+                    log.error("can not find variables for the group:" + group);
+                }
             }
         });
 

@@ -70,7 +70,7 @@
     <properties>
         <java.version>1.8</java.version>
 <!--        <integrations.sdk.version>2.6.7.9</integrations.sdk.version>-->
-        <integrations.sdk.version>2.7.1.28</integrations.sdk.version>
+        <integrations.sdk.version>2.7.2.6</integrations.sdk.version>
         <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
         <maven-gpg-plugin.version>1.5</maven-gpg-plugin.version>
         <maven.compiler.plugin.version>1.8</maven.compiler.plugin.version>
@@ -86,6 +86,7 @@
         <matching.obj>jarfile_batch_sign_local_timestamp</matching.obj>
         <file.name>${project.artifactId}-${project.version}.jar</file.name>
         <nexus-staging-maven-plugin.version>1.6.7</nexus-staging-maven-plugin.version>
+        <log4j.version>2.17.0</log4j.version>
     </properties>
 
     <repositories>
@@ -159,10 +160,51 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-log4j2</artifactId>
+            <version>2.6.1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-jul</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-slf4j-impl</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-web</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <!-- temporary dependencies of log4j, until spring-boot-starter-log4j2 will release a new version -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-jul</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>${log4j.version}</version>
         </dependency>
         <dependency>
             <groupId>commons-io</groupId>
