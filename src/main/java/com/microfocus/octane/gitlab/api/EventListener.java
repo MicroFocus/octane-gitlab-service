@@ -191,19 +191,27 @@ public class EventListener {
     }
 
     private void sendCodeCoverage(Integer projectId, Project project, Job job) throws GitLabApiException, IOException {
-        Optional<Variable> coverageReportFilePath = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
+        Optional<Variable> coverageReportFilePathVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                 applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
 
-        if (coverageReportFilePath.isEmpty()) {
+        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project);
+
+        if (coverageReportFilePathVar.isEmpty() && !projectGroupVariables.containsKey(
+                applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName())) {
             log.info("Variable for JaCoCo coverage report path not set. No coverage injection for this pipeline.");
         } else {
+            String coverageReportFilePath = coverageReportFilePathVar.isPresent()
+                    ? coverageReportFilePathVar.get().getValue()
+                    : projectGroupVariables.get(
+                            applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
+
             String octaneJobId = project.getPathWithNamespace().toLowerCase() + "/" + job.getName();
             String octaneBuildId = job.getId().toString();
 
             OctaneSDK.getClients().forEach(client -> {
                 try (InputStream codeCoverageReportFile = gitLabApi.getJobApi()
                         .downloadSingleArtifactsFile(projectId, job.getId(),
-                                Paths.get(coverageReportFilePath.get().getValue()))) {
+                                Paths.get(coverageReportFilePath))) {
                     client.getCoverageService()
                             .pushCoverage(octaneJobId, octaneBuildId, CoverageReportType.JACOCOXML,
                                     codeCoverageReportFile);
