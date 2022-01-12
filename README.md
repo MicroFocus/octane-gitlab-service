@@ -172,7 +172,7 @@ By default, When defining the pipeline in ALM Octane, the user is also able to r
 In some cases, the user should have the ability to add and view the pipeline, but should not have the ability to run it.
 When running the pipeline is not allowed- this parameter should be set to 'false'. 
 
-##### gitlab.variables.publishMergeRequestVarName
+##### gitlab.mergeRequests.variables.publishMergeRequestVarName
 The name of the gitlab defined variable that specifies if merge requests should be sent to Octane or not for the project
 the variable is defined in.
 
@@ -181,7 +181,7 @@ The values must be boolean values (true of false).
 If the variable is not defined in Gitlab or if it is set to anything but true then merge requests will not be sent to 
 Octane for the current project.
 
-##### gitlab.variables.destinationWorkspaceVarName
+##### gitlab.mergeRequests.variables.destinationWorkspaceVarName
 The name of the gitlab defined variable that specifies the destination workspace for the sent pull requests.
 
 If the project has merge request sending set to true (the publishMergeRequest variable), but does not have this variable
@@ -190,7 +190,7 @@ defined or if the workspace specified does not exist an error will be thrown.
 Rule of thumb: Where publishMergeRequest variable is set to true destinationWorkspace variable must also be configured 
 in order for the tool to work correctly.
 
-##### gitlab.variables.useSSHFormatVarName
+##### gitlab.mergeRequests.variables.useSSHFormatVarName
 The name of the gitlab defined variable that specifies which url of the repo should be used for cloning.
 
 The values must be boolean values (true of false).
@@ -198,14 +198,14 @@ The values must be boolean values (true of false).
 If the value is set to true the ssh url will be used. Otherwise, if the value is not true or if the variable is not 
 defined at all for the project, then the http url will be used by default.
 
-#### gitlab.variables.generatedCoverageReportFilePathVarName
+#### gitlab.codeCoverage.variables.generatedCoverageReportFilePathVarName
 The name of the gitlab defined variable that specifies the path to the generated coverage report file by the pipeline job.
 
 This path should be the one that is configured in the pipeline coverage goal step.
 
 Example value of the variable content: target/site/jacoco/jacoco.xml
 
-##### gitlab.mergeRequestHistoryFolderPath
+##### gitlab.mergeRequests.mergeRequestHistoryFolderPath
 The path to a folder where merge request history fetching statuses should be kept for each of the projects.
 
 If the folder does not exist, then it will be created automatically.
