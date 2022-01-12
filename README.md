@@ -68,6 +68,8 @@ gitlab.gherkinTestResultsFilePattern=<optional:'glob:pattern' or 'regex:pattern'
 gitlab.testResultsOutputFolderPath=<optional: place to save test results before sending it to Octane.>
 gitlab.variables.pipeline.usage=<optional: comma separated list of project,groups,instance>
 gitlab.ci.service.can.run.pipeline=<optional: If the service can run pipelines from ALM Octane. true by default>
+
+gitlab.codeCoverage.generatedCoverageReportFilePathVarName=<optional: Name of the variable containing the path of the generated JaCoCo coverage report file as configured in the pipeline. Default value: jacocoReportPath>
 gitlab.mergeRequests.variables.publishMergeRequestVarName=<optional: Name of the variable containing a boolean value that specifies if merge requests will be published into Octane from the current project. Default value: 'publishMergeRequests'>
 gitlab.mergeRequests.variables.destinationWorkspaceVarName=<optional: Name of the variable containing a string value that specifies the destination workspace where merge requests will be published into Octane from the current project. Default value: 'destinationWorkspace'>
 gitlab.mergeRequests.variables.useSSHFormatVarName=<optional: Name of the variable containing a boolean value that specifies if the clone url for the current proeject should be in SSH format or not. Default value: 'useSSHFormat'>
@@ -195,6 +197,13 @@ The values must be boolean values (true of false).
 
 If the value is set to true the ssh url will be used. Otherwise, if the value is not true or if the variable is not 
 defined at all for the project, then the http url will be used by default.
+
+#### gitlab.variables.generatedCoverageReportFilePathVarName
+The name of the gitlab defined variable that specifies the path to the generated coverage report file by the pipeline job.
+
+This path should be the one that is configured in the pipeline coverage goal step.
+
+Example value of the variable content: target/site/jacoco/jacoco.xml
 
 ##### gitlab.mergeRequestHistoryFolderPath
 The path to a folder where merge request history fetching statuses should be kept for each of the projects.
