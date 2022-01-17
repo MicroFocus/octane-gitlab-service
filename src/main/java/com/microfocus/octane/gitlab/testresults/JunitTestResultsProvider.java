@@ -96,7 +96,7 @@ public class JunitTestResultsProvider {
                                 break;
                         }
                     } catch (Exception e) {
-                        log.error("Failed to create a test result list based on the job artifact: " + artifact.getKey(), e);
+                        log.warn("Failed to create a test result list based on the job artifact: " + artifact.getKey(), e);
                     }
                 }
             } catch (Exception e) {

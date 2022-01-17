@@ -45,6 +45,9 @@ public class Application {
             }
         }
         ConfigurableApplicationContext context = SpringApplication.run(Application.class, args);
+
+        context.registerShutdownHook();
+
         OctaneServices octaneServices = context.getBean("octaneServices", OctaneServices.class);
         try {
             if(octaneServices.getGitLabService().isCleanUpOnly()){
