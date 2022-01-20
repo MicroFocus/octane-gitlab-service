@@ -138,11 +138,7 @@ public class EventListener {
                         List<Variable> allVariables = VariablesHelper.getVariables(parsedPath,gitLabApi,applicationSettings.getConfig());
 
                         variablesList.forEach(var -> {
-                            boolean shouldReport = allVariables.stream()
-                                    .filter(o -> (o.getKey().equals(((JSONObject)var).get("key")))).findFirst().isPresent();
-                            if(shouldReport){
-                                parametersList.add(VariablesHelper.convertVariableToParameter(var));
-                            }
+                            parametersList.add(VariablesHelper.convertVariableToParameter(var));
                         });
 
                         if(parametersList.size() >0) {
