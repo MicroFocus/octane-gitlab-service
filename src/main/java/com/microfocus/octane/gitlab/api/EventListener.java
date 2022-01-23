@@ -126,8 +126,12 @@ public class EventListener {
                     if (ciEvent.getProject().contains("pipeline:")) {
                         parsedPath = new ParsedPath(ciEvent.getProject(), gitLabApi, PathType.PIPELINE);
                         if (parsedPath.isMultiBranch()) {
-                            ciEvent.setProjectDisplayName(parsedPath.getFullPathOfProjectWithBranch());
-                            ciEvent.setParentCiId(parsedPath.getFullPathOfPipeline()).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
+
+                                String projectDisplayName = parsedPath.getNameWithNameSpaceForDisplayName() !=null?
+                                        parsedPath.getNameWithNameSpaceForDisplayName() :parsedPath.getFullPathOfProjectWithBranch();
+
+                                ciEvent.setProjectDisplayName(projectDisplayName+ "/"+ parsedPath.getCurrentBranch());
+                                ciEvent.setParentCiId(parsedPath.getFullPathOfPipeline()).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
                         }
                     }
 
