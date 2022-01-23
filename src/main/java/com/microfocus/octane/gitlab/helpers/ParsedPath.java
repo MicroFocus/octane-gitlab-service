@@ -21,6 +21,7 @@ public class ParsedPath {
     private int id;
     private GitLabApi gitlabApi;
     private static final Logger log = LogManager.getLogger(ParsedPath.class);
+    private String nameWithNameSpaceForDisplayName;
 
     public static List<String> getGroupFullPathFromProject(String fullPathOfProject) {
         List<String> groupFullPath = new ArrayList<>();
@@ -68,6 +69,7 @@ public class ParsedPath {
         this.displayName = project.getName();
         this.pathWithNameSpace = project.getPathWithNamespace();
         this.id = project.getId();
+        this.nameWithNameSpaceForDisplayName = project.getNameWithNamespace();
     }
 
     public Boolean isMultiBranch() {
@@ -141,6 +143,18 @@ public class ParsedPath {
             }
         }
         return id;
+    }
+    public String getNameWithNameSpaceForDisplayName(){
+        if (project == null) {
+            try {
+                this.project = gitlabApi.getProjectApi().getProject(this.getPathWithNameSpace());
+            } catch (Exception e) {
+                log.warn("failed while getting project from " + this.getPathWithNameSpace());
+                return null;
+            }
+        }
+        this.nameWithNameSpaceForDisplayName = project.getNameWithNamespace();
+        return this.nameWithNameSpaceForDisplayName;
     }
 
     public String getCurrentBranchOrDefault() {
