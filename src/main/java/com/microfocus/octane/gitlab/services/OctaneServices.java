@@ -26,12 +26,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
+import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Job;
 import org.gitlab4j.api.models.Pipeline;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+import javax.validation.constraints.NotNull;
 import javax.xml.transform.TransformerConfigurationException;
 import java.io.*;
 import java.net.URL;
@@ -288,18 +291,18 @@ public class OctaneServices extends CIPluginServices {
     @Override
     public void stopPipelineRun(String jobId, CIParameters ciParameters) {
         try {
-            String cleanedPath = getPathWithoutBranchAndPipeline(jobId);
+            ParsedPath parsedPath = new ParsedPath(jobId, gitLabApi, PathType.PIPELINE);
 
             List<Pipeline> pipelines = gitLabApi.getPipelineApi()
-                    .getPipelines(cleanedPath);
+                    .getPipelines(parsedPath.getPathWithNameSpace());
 
             int pipelineIdWithParameter = getIdWhereParameter(
-                    cleanedPath,
+                    parsedPath.getPathWithNameSpace(),
                     pipelines,
                     ciParameters.getParameters().get(0));
 
             gitLabApi.getPipelineApi().cancelPipelineJobs(
-                    cleanedPath,
+                    parsedPath.getPathWithNameSpace(),
                     pipelineIdWithParameter);
 
         } catch (GitLabApiException e) {
@@ -335,11 +338,6 @@ public class OctaneServices extends CIPluginServices {
     private boolean pipelineInQueue(Pipeline pipeline) {
         return pipeline.getStatus().toString().equals(RUNNING_STATUS)
                 || pipeline.getStatus().toString().equals(PENDING_STATUS);
-    }
-
-    private String getPathWithoutBranchAndPipeline(String jobId) {
-        String result = jobId.split(":")[1];
-        return result.substring(0, result.lastIndexOf("/"));
     }
 
 }
