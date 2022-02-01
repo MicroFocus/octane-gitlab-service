@@ -288,18 +288,18 @@ public class OctaneServices extends CIPluginServices {
     @Override
     public void stopPipelineRun(String jobId, CIParameters ciParameters) {
         try {
-            String cleanedPath = getPathWithoutBranchAndPipeline(jobId);
+            ParsedPath parsedPath = new ParsedPath(jobId, gitLabApi, PathType.PIPELINE);
 
             List<Pipeline> pipelines = gitLabApi.getPipelineApi()
-                    .getPipelines(cleanedPath);
+                    .getPipelines(parsedPath.getPathWithNameSpace());
 
             int pipelineIdWithParameter = getIdWhereParameter(
-                    cleanedPath,
+                    parsedPath.getPathWithNameSpace(),
                     pipelines,
                     ciParameters.getParameters().get(0));
 
             gitLabApi.getPipelineApi().cancelPipelineJobs(
-                    cleanedPath,
+                    parsedPath.getPathWithNameSpace(),
                     pipelineIdWithParameter);
 
         } catch (GitLabApiException e) {
@@ -335,11 +335,6 @@ public class OctaneServices extends CIPluginServices {
     private boolean pipelineInQueue(Pipeline pipeline) {
         return pipeline.getStatus().toString().equals(RUNNING_STATUS)
                 || pipeline.getStatus().toString().equals(PENDING_STATUS);
-    }
-
-    private String getPathWithoutBranchAndPipeline(String jobId) {
-        String result = jobId.split(":")[1];
-        return result.substring(0, result.lastIndexOf("/"));
     }
 
 }
