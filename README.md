@@ -71,7 +71,7 @@ gitlab.ci.service.can.run.pipeline=<optional: If the service can run pipelines f
 
 gitlab.codeCoverage.generatedCoverageReportFilePathVarName=<optional: Name of the variable containing the path of the generated JaCoCo coverage report file as configured in the pipeline. Default value: jacocoReportPath>
 gitlab.mergeRequests.variables.publishMergeRequestVarName=<optional: Name of the variable containing a boolean value that specifies if merge requests will be published into Octane from the current project. Default value: 'publishMergeRequests'>
-gitlab.mergeRequests.variables.destinationWorkspaceVarName=<optional: Name of the variable containing a string value that specifies the destination workspace where merge requests will be published into Octane from the current project. Default value: 'destinationWorkspace'>
+gitlab.mergeRequests.variables.destinationWorkspaceVarName=<optional: Name of the variable containing a string value that specifies the destination workspace id where merge requests will be published into Octane from the current project. Default value: 'destinationWorkspace'>
 gitlab.mergeRequests.variables.useSSHFormatVarName=<optional: Name of the variable containing a boolean value that specifies if the clone url for the current proeject should be in SSH format or not. Default value: 'useSSHFormat'>
 gitlab.mergeRequests.mergeRequestHistoryFolderPath=<optional: Path of directory to store fetch history state for projects. Default value: 'projectHistory'>
 
@@ -182,10 +182,10 @@ If the variable is not defined in Gitlab or if it is set to anything but true th
 Octane for the current project.
 
 ##### gitlab.mergeRequests.variables.destinationWorkspaceVarName
-The name of the gitlab defined variable that specifies the destination workspace for the sent pull requests.
+The name of the gitlab defined variable that specifies the destination workspace id for the sent pull requests.
 
 If the project has merge request sending set to true (the publishMergeRequest variable), but does not have this variable
-defined or if the workspace specified does not exist an error will be thrown.
+defined or if the workspace id specified does not exist an error will be thrown.
 
 Rule of thumb: Where publishMergeRequest variable is set to true destinationWorkspace variable must also be configured 
 in order for the tool to work correctly.
