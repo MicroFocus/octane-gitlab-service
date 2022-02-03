@@ -56,6 +56,9 @@ public class OctaneServices extends CIPluginServices {
 
 //    private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
     private static GitLabApi gitLabApi;
+    private final String RUNNING_STATUS = "running";
+    private final String PENDING_STATUS = "pending";
+    private final Integer NO_SUCH_PIPELINE = -1;
 
     @Autowired
     public OctaneServices() throws TransformerConfigurationException {
