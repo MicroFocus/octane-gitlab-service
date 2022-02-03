@@ -7,6 +7,7 @@ import com.hp.octane.integrations.dto.configuration.CIProxyConfiguration;
 import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.general.CIPluginInfo;
 import com.hp.octane.integrations.dto.general.CIServerInfo;
+import com.hp.octane.integrations.dto.parameters.CIParameter;
 import com.hp.octane.integrations.dto.parameters.CIParameters;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.hp.octane.integrations.dto.tests.*;
@@ -26,6 +27,8 @@ import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Job;
+import org.gitlab4j.api.models.Pipeline;
+import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -34,6 +37,7 @@ import java.io.*;
 import java.net.URL;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.microfocus.octane.gitlab.helpers.PasswordEncryption.PREFIX;
 
@@ -49,6 +53,9 @@ public class OctaneServices extends CIPluginServices {
 
 //    private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
     private static GitLabApi gitLabApi;
+    private final String RUNNING_STATUS = "running";
+    private final String PENDING_STATUS = "pending";
+    private final Integer NO_SUCH_PIPELINE = -1;
 
     @Autowired
     public OctaneServices() throws TransformerConfigurationException {
@@ -276,6 +283,58 @@ public class OctaneServices extends CIPluginServices {
 
     public GitlabServices getGitLabService() {
         return gitlabServices;
+    }
+
+    @Override
+    public void stopPipelineRun(String jobId, CIParameters ciParameters) {
+        try {
+            ParsedPath parsedPath = new ParsedPath(jobId, gitLabApi, PathType.PIPELINE);
+
+            List<Pipeline> pipelines = gitLabApi.getPipelineApi()
+                    .getPipelines(parsedPath.getPathWithNameSpace());
+
+            int pipelineIdWithParameter = getIdWhereParameter(
+                    parsedPath.getPathWithNameSpace(),
+                    pipelines,
+                    ciParameters.getParameters().get(0));
+
+            gitLabApi.getPipelineApi().cancelPipelineJobs(
+                    parsedPath.getPathWithNameSpace(),
+                    pipelineIdWithParameter);
+
+        } catch (GitLabApiException e) {
+            log.error("Failed to stop the pipeline run", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private int getIdWhereParameter(String cleanedPath, List<Pipeline> pipelines, CIParameter ciParameter) {
+        pipelines = pipelines.stream()
+                .filter(this::pipelineInQueue)
+                .collect(Collectors.toList());
+
+        return pipelines.stream().map(pipeline -> {
+                    List<Variable> pipelineVariables = null;
+                    try {
+                        pipelineVariables = gitLabApi.getPipelineApi()
+                                .getPipelineVariables(cleanedPath, pipeline.getId());
+                    } catch (GitLabApiException e) {
+                        e.printStackTrace();
+                    }
+                    assert pipelineVariables != null;
+                    for (Variable variable : pipelineVariables) {
+                        if (variable.getValue().equals(ciParameter.getValue().toString())) {
+                            return pipeline.getId();
+                        }
+                    }
+                    return NO_SUCH_PIPELINE;
+                }).filter(integer -> !Objects.equals(integer, NO_SUCH_PIPELINE))
+                .findAny().orElse(NO_SUCH_PIPELINE);
+    }
+
+    private boolean pipelineInQueue(Pipeline pipeline) {
+        return pipeline.getStatus().toString().equals(RUNNING_STATUS)
+                || pipeline.getStatus().toString().equals(PENDING_STATUS);
     }
 
 }
