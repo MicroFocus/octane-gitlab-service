@@ -26,12 +26,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
+import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Job;
 import org.gitlab4j.api.models.Pipeline;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+import javax.validation.constraints.NotNull;
 import javax.xml.transform.TransformerConfigurationException;
 import java.io.*;
 import java.net.URL;
@@ -53,9 +56,6 @@ public class OctaneServices extends CIPluginServices {
 
 //    private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
     private static GitLabApi gitLabApi;
-    private final String RUNNING_STATUS = "running";
-    private final String PENDING_STATUS = "pending";
-    private final Integer NO_SUCH_PIPELINE = -1;
 
     @Autowired
     public OctaneServices() throws TransformerConfigurationException {

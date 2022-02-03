@@ -8,6 +8,7 @@ import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Project;
 
+import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,16 +45,22 @@ public class ParsedPath {
     }
 
     private void init(String path, PathType pathType) {
+        int count = (int) path.chars().filter(p -> p == '/').count();
         switch (pathType) {
             case PIPELINE:
-                currentBranch = getLastPartOfPath(path);
-                path = cutLastPartOfPath(path);
+                if(count > 1) {
+                    currentBranch = getLastPartOfPath(path);
+                    path = cutLastPartOfPath(path);
+                }
             case MULTI_BRUNCH:
                 path = cutPipelinePrefix(path);
             case PROJECT:
                 displayName = getLastPartOfPath(path);
                 path = cutLastPartOfPath(path);
                 groups = path;
+                if(count == 1) {
+                    currentBranch = getDefaultBranch();
+                }
         }
     }
 
@@ -162,7 +169,7 @@ public class ParsedPath {
             return currentBranch;
 
         if(getBranches().size()>0){
-            return getBranches().get(0).getName();
+            return getDefaultBranch();
         }else{
              throw new ArrayIndexOutOfBoundsException ("there is not branches for this project, the project is empty:"+this.displayName);
         }
@@ -172,4 +179,14 @@ public class ParsedPath {
     public String getCurrentBranch() {
         return currentBranch;
     }
+
+    @NotNull
+    public String getDefaultBranch() {
+        List<Branch> branches = getBranches();
+        return branches.stream()
+                .filter(Branch::getDefault)
+                .findAny().map(Branch::getName)
+                .orElse(null);
+    }
+
 }
