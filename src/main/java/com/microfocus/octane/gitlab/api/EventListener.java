@@ -66,6 +66,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.microfocus.octane.gitlab.services.OctaneServices.getCiBuildResult;
+
 @Component
 @Path("/events")
 public class EventListener {
@@ -407,12 +409,7 @@ public class EventListener {
     }
 
     private CIBuildResult convertCiBuildResult(String status) {
-        if (status.equals("success")) return CIBuildResult.SUCCESS;
-        if (status.equals("failed")) return CIBuildResult.FAILURE;
-        if (status.equals("drop") || status.equals("skipped") || status.equals("canceled"))
-            return CIBuildResult.ABORTED;
-        if (status.equals("unstable")) return CIBuildResult.UNSTABLE;
-        return CIBuildResult.UNAVAILABLE;
+        return getCiBuildResult(status);
     }
 
     private String getStatus(JSONObject event) {
