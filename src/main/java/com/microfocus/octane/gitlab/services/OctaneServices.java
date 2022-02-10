@@ -322,12 +322,23 @@ public class OctaneServices extends CIPluginServices {
                     .getPipelines(parsedPath.getPathWithNameSpace());
 
             Optional<Pipeline> chosenPipeline = pipelines.stream()
-                    .map(pipeline -> getPipelineWithParameter(
-                            parameterName,
-                            parameterValue,
-                            parsedPath,
-                            pipeline))
-                    .filter(Objects::nonNull).findAny();
+                    .map(pipeline -> {
+                        try {
+                            List<Variable> pipelineVariables = gitLabApi.getPipelineApi().getPipelineVariables(
+                                    parsedPath.getPathWithNameSpace(),
+                                    pipeline.getId());
+
+                            for (Variable variable : pipelineVariables) {
+                                if (variable.getKey().equals(parameterName) && variable.getValue().equals(parameterValue)) {
+                                    return pipeline;
+                                }
+                            }
+                            return null;
+                        } catch (GitLabApiException e) {
+                            log.error("Failed to get variables from pipeline", e);
+                            throw new RuntimeException(e);
+                        }
+                    }).filter(Objects::nonNull).findAny();
 
             if (chosenPipeline.isPresent()) {
                 String status = chosenPipeline.get().getStatus().toValue();
@@ -402,24 +413,6 @@ public class OctaneServices extends CIPluginServices {
             return CIBuildResult.ABORTED;
         if (status.equals("unstable")) return CIBuildResult.UNSTABLE;
         return CIBuildResult.UNAVAILABLE;
-    }
-
-    private Pipeline getPipelineWithParameter(String parameterName, String parameterValue, ParsedPath parsedPath, Pipeline pipeline) {
-        try {
-            List<Variable> pipelineVariables = gitLabApi.getPipelineApi().getPipelineVariables(
-                    parsedPath.getPathWithNameSpace(),
-                    pipeline.getId());
-
-            for (Variable variable : pipelineVariables) {
-                if (variable.getKey().equals(parameterName) && variable.getValue().equals(parameterValue)) {
-                    return pipeline;
-                }
-            }
-            return null;
-        } catch (GitLabApiException e) {
-            log.error("Failed to get variables from pipeline", e);
-            throw new RuntimeException(e);
-        }
     }
 
 }
