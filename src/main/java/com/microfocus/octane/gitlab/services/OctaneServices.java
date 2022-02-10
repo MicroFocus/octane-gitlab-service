@@ -340,8 +340,8 @@ public class OctaneServices extends CIPluginServices {
                     throw new RuntimeException("Failed to get the correct build status");
                 }
 
-                CIBuildStatusInfo ciBuildStatusInfo = new CIBuildStatusInfoImpl();
-                return ciBuildStatusInfo.setBuildStatus(buildStatus.get())
+                return dtoFactory.newDTO(CIBuildStatusInfo.class)
+                        .setBuildStatus(buildStatus.get())
                         .setJobCiId(jobCiId)
                         .setParamName(parameterName)
                         .setParamValue(parameterValue)
