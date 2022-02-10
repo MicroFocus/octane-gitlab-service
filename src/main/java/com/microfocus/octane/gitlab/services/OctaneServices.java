@@ -345,7 +345,7 @@ public class OctaneServices extends CIPluginServices {
                         .setJobCiId(jobCiId)
                         .setParamName(parameterName)
                         .setParamValue(parameterValue)
-                        .setResult(convertCiBuildResult(status));
+                        .setResult(getCiBuildResult(status));
             }
             throw new RuntimeException("Failed to get information about the pipeline");
         } catch (GitLabApiException e) {
@@ -393,10 +393,6 @@ public class OctaneServices extends CIPluginServices {
         } else {
             return CIBuildStatus.UNAVAILABLE;
         }
-    }
-
-    private CIBuildResult convertCiBuildResult(String status) {
-        return getCiBuildResult(status);
     }
 
     public static CIBuildResult getCiBuildResult(String status) {
