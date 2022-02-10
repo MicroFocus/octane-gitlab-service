@@ -4,12 +4,15 @@ import com.hp.octane.integrations.CIPluginServices;
 import com.hp.octane.integrations.OctaneConfiguration;
 import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.configuration.CIProxyConfiguration;
+import com.hp.octane.integrations.dto.general.CIBuildStatusInfo;
 import com.hp.octane.integrations.dto.general.CIJobsList;
 import com.hp.octane.integrations.dto.general.CIPluginInfo;
 import com.hp.octane.integrations.dto.general.CIServerInfo;
 import com.hp.octane.integrations.dto.parameters.CIParameter;
 import com.hp.octane.integrations.dto.parameters.CIParameters;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
+import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
+import com.hp.octane.integrations.dto.snapshots.CIBuildStatus;
 import com.hp.octane.integrations.dto.tests.*;
 import com.hp.octane.integrations.exceptions.PermissionException;
 import com.hp.octane.integrations.services.configurationparameters.EncodeCiJobBase64Parameter;
@@ -311,6 +314,57 @@ public class OctaneServices extends CIPluginServices {
         }
     }
 
+    @Override
+    public CIBuildStatusInfo getJobBuildStatus(String jobCiId, String parameterName, String parameterValue) {
+        ParsedPath parsedPath = new ParsedPath(jobCiId, gitLabApi, PathType.PIPELINE);
+        try {
+            List<Pipeline> pipelines = gitLabApi.getPipelineApi()
+                    .getPipelines(parsedPath.getPathWithNameSpace());
+
+            Optional<Pipeline> chosenPipeline = pipelines.stream()
+                    .map(pipeline -> {
+                        try {
+                            List<Variable> pipelineVariables = gitLabApi.getPipelineApi().getPipelineVariables(
+                                    parsedPath.getPathWithNameSpace(),
+                                    pipeline.getId());
+
+                            for (Variable variable : pipelineVariables) {
+                                if (variable.getKey().equals(parameterName) && variable.getValue().equals(parameterValue)) {
+                                    return pipeline;
+                                }
+                            }
+                            return null;
+                        } catch (GitLabApiException e) {
+                            log.error("Failed to get variables from pipeline", e);
+                            throw new RuntimeException(e);
+                        }
+                    }).filter(Objects::nonNull).findAny();
+
+            if (chosenPipeline.isPresent()) {
+                String status = chosenPipeline.get().getStatus().toValue();
+                CIBuildStatus currentCIBuildStatus = getCIBuildStatus(status);
+                Optional<CIBuildStatus> buildStatus = Arrays.stream(CIBuildStatus.values())
+                        .filter(ciBuildStatus -> Objects.equals(ciBuildStatus, currentCIBuildStatus))
+                        .findAny();
+
+                if (!buildStatus.isPresent()) {
+                    throw new RuntimeException("Failed to get the correct build status");
+                }
+
+                return dtoFactory.newDTO(CIBuildStatusInfo.class)
+                        .setBuildStatus(buildStatus.get())
+                        .setJobCiId(jobCiId)
+                        .setParamName(parameterName)
+                        .setParamValue(parameterValue)
+                        .setResult(getCiBuildResult(status));
+            }
+            throw new RuntimeException("Failed to get information about the pipeline");
+        } catch (GitLabApiException e) {
+            log.error("Failed to get job build status of the pipeline run", e);
+            throw new RuntimeException(e);
+        }
+    }
+
     private int getIdWhereParameter(String cleanedPath, List<Pipeline> pipelines, CIParameter ciParameter) {
         pipelines = pipelines.stream()
                 .filter(this::pipelineInQueue)
@@ -338,6 +392,27 @@ public class OctaneServices extends CIPluginServices {
     private boolean pipelineInQueue(Pipeline pipeline) {
         return pipeline.getStatus().toString().equals(RUNNING_STATUS)
                 || pipeline.getStatus().toString().equals(PENDING_STATUS);
+    }
+
+    private CIBuildStatus getCIBuildStatus(String statusStr) {
+        if (Arrays.asList(new String[]{"process", "enqueue", "pending", "created"}).contains(statusStr)) {
+            return CIBuildStatus.QUEUED;
+        } else if (Arrays.asList(new String[]{"success", "failed", "canceled", "skipped"}).contains(statusStr)) {
+            return CIBuildStatus.FINISHED;
+        } else if (Arrays.asList(new String[]{"running", "manual"}).contains(statusStr)) {
+            return CIBuildStatus.RUNNING;
+        } else {
+            return CIBuildStatus.UNAVAILABLE;
+        }
+    }
+
+    private CIBuildResult getCiBuildResult(String status) {
+        if (status.equals("success")) return CIBuildResult.SUCCESS;
+        if (status.equals("failed")) return CIBuildResult.FAILURE;
+        if (status.equals("drop") || status.equals("skipped") || status.equals("canceled"))
+            return CIBuildResult.ABORTED;
+        if (status.equals("unstable")) return CIBuildResult.UNSTABLE;
+        return CIBuildResult.UNAVAILABLE;
     }
 
 }
