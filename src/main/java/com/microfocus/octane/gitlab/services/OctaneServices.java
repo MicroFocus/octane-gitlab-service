@@ -406,7 +406,7 @@ public class OctaneServices extends CIPluginServices {
         }
     }
 
-    public static CIBuildResult getCiBuildResult(String status) {
+    private CIBuildResult getCiBuildResult(String status) {
         if (status.equals("success")) return CIBuildResult.SUCCESS;
         if (status.equals("failed")) return CIBuildResult.FAILURE;
         if (status.equals("drop") || status.equals("skipped") || status.equals("canceled"))
