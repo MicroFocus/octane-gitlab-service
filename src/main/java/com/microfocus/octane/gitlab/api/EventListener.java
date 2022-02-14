@@ -343,7 +343,7 @@ public class EventListener {
     }
 
     private Long calculateDuration(CIEventType eventType, Object duration) {
-        if(eventType == CIEventType.STARTED || duration == null) return null;
+        if(eventType == CIEventType.STARTED || duration == null) return 0L;
 
         if(duration instanceof Double) return Math.round(1000* (Double) duration);
         if(duration instanceof BigDecimal) return Long.valueOf(Math.round(1000* ((BigDecimal) duration).intValue()));
