@@ -57,14 +57,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Component
 @Path("/events")
@@ -343,7 +336,7 @@ public class EventListener {
     }
 
     private Long calculateDuration(CIEventType eventType, Object duration) {
-        if(eventType == CIEventType.STARTED || duration == null) return 0L;
+        if(eventType == CIEventType.STARTED || Objects.equals( duration, null)) return 0L;
 
         if(duration instanceof Double) return Math.round(1000* (Double) duration);
         if(duration instanceof BigDecimal) return Long.valueOf(Math.round(1000* ((BigDecimal) duration).intValue()));
