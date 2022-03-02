@@ -13,6 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ParsedPath {
+
+    public static final String BRANCH_WITH_SLASH_SEPARATOR = "/~~/";
+    public static final String PIPELINE_JOB_CI_ID_PREFIX = "pipeline:";
+
     private Project project;
     private String groups;
     private String displayName;
@@ -45,11 +49,18 @@ public class ParsedPath {
     }
 
     private void init(String path, PathType pathType) {
+
+        String branchSuffix = "";
+        if(path.contains(BRANCH_WITH_SLASH_SEPARATOR)){
+            branchSuffix = path.substring(path.lastIndexOf(BRANCH_WITH_SLASH_SEPARATOR)+(BRANCH_WITH_SLASH_SEPARATOR.length()-1),path.length() );
+            path = path.substring(0,path.lastIndexOf(BRANCH_WITH_SLASH_SEPARATOR));
+        }
+
         int count = (int) path.chars().filter(p -> p == '/').count();
         switch (pathType) {
             case PIPELINE:
                 if(count > 1) {
-                    currentBranch = getLastPartOfPath(path);
+                    currentBranch = getLastPartOfPath(path) +branchSuffix;
                     path = cutLastPartOfPath(path);
                 }
             case MULTI_BRUNCH:
@@ -97,14 +108,6 @@ public class ParsedPath {
         return getPathWithNameSpace() + "/" + getCurrentBranchOrDefault();
     }
 
-    public String getFullPathOfPipelineWithBranch() {
-        return getFullPathOfPipeline() + "/" + getCurrentBranchOrDefault();
-    }
-
-    public String getFullPathOfPipeline() {
-        return "pipeline:" + getPathWithNameSpace();
-    }
-
     public static String cutPipelinePrefix(String jobCiId) {
         return jobCiId.substring(jobCiId.indexOf(':') + 1);
     }
@@ -115,6 +118,22 @@ public class ParsedPath {
 
     public static String cutLastPartOfPath(String s) {
         return s.substring(0, s.lastIndexOf("/"));
+    }
+
+    public static String cutBranchFromPath(String s) {
+        if(s.contains(BRANCH_WITH_SLASH_SEPARATOR)){
+            s= s.substring(0,s.lastIndexOf(BRANCH_WITH_SLASH_SEPARATOR));
+        }
+        return s.substring(0, s.lastIndexOf("/"));
+    }
+
+    public String getJobCiId(boolean isMultiBranchRoot){
+        String jobCiId = (PIPELINE_JOB_CI_ID_PREFIX + getPathWithNameSpace()).toLowerCase();
+        if(isMultiBranchRoot){
+            return jobCiId;
+        } else{
+            return jobCiId+"/" + getCurrentBranchOrDefault();
+        }
     }
 
     public String getDisplayName() {

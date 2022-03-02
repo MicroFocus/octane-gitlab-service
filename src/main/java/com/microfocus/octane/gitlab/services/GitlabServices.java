@@ -219,12 +219,12 @@ public class GitlabServices {
                         PipelineNode buildConf;
                         if (parseProject.isMultiBranch()) {
                             buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                    .setJobCiId(parseProject.getFullPathOfPipeline().toLowerCase())
+                                    .setJobCiId(parseProject.getJobCiId(true))
                                     .setName(project.getNameWithNamespace())
                                     .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
                         } else {
                             buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                    .setJobCiId(parseProject.getFullPathOfPipelineWithBranch().toLowerCase())
+                                    .setJobCiId(parseProject.getJobCiId(false))
                                     .setName(project.getNameWithNamespace());
                         }
 
@@ -256,7 +256,7 @@ public class GitlabServices {
             if (project.isMultiBranch()) {
                 addWebHookToProject(project.getFullPathOfProject(),true);
                  return dtoFactory.newDTO(PipelineNode.class)
-                        .setJobCiId(project.getFullPathOfPipeline().toLowerCase())
+                        .setJobCiId(project.getJobCiId(true))
                         .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT)
                          .setName(project.getNameWithNameSpaceForDisplayName())
                         .setParameters(getParameters(project));
@@ -264,7 +264,7 @@ public class GitlabServices {
             project = new ParsedPath(buildId, gitLabApi, PathType.PIPELINE);
             addWebHookToProject(project.getId(),true);
             return   dtoFactory.newDTO(PipelineNode.class)
-                    .setJobCiId(project.getFullPathOfPipelineWithBranch().toLowerCase())
+                    .setJobCiId(project.getJobCiId(false))
                     .setName(project.getNameWithNameSpaceForDisplayName())
                     .setParameters(getParameters(project));
         } catch (GitLabApiException e){
