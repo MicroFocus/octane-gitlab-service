@@ -32,13 +32,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
-import org.gitlab4j.api.models.Commit;
-import org.gitlab4j.api.models.CompareResults;
-import org.gitlab4j.api.models.Diff;
-import org.gitlab4j.api.models.Job;
-import org.gitlab4j.api.models.MergeRequest;
-import org.gitlab4j.api.models.Project;
-import org.gitlab4j.api.models.Variable;
+import org.gitlab4j.api.models.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -116,7 +110,7 @@ public class EventListener {
                             ciEvent.setSkipValidation(true);
                         }
                     }
-                    if (ciEvent.getProject().contains("pipeline:")) {
+                    if (ciEvent.getProject().contains(ParsedPath.PIPELINE_JOB_CI_ID_PREFIX)) {
                         parsedPath = new ParsedPath(ciEvent.getProject(), gitLabApi, PathType.PIPELINE);
                         if (parsedPath.isMultiBranch()) {
 
@@ -124,7 +118,7 @@ public class EventListener {
                                         parsedPath.getNameWithNameSpaceForDisplayName() :parsedPath.getFullPathOfProjectWithBranch();
 
                                 ciEvent.setProjectDisplayName(projectDisplayName+ "/"+ parsedPath.getCurrentBranch());
-                                ciEvent.setParentCiId(parsedPath.getFullPathOfPipeline()).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
+                                ciEvent.setParentCiId(parsedPath.getJobCiId(true)).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
                         }
                     }
 
@@ -301,7 +295,7 @@ public class EventListener {
         }
 
         events.add(dtoFactory.newDTO(CIEvent.class)
-                .setProjectDisplayName(getCiName(event))
+                .setProjectDisplayName(getCiDisplayName(event))
                 .setEventType(eventType)
                 .setBuildCiId(buildCiId.toString())
                 .setNumber(buildCiId.toString())
@@ -317,7 +311,7 @@ public class EventListener {
 
         if (scmData != null) {
             events.add(dtoFactory.newDTO(CIEvent.class)
-                    .setProjectDisplayName(getCiName(event))
+                    .setProjectDisplayName(getCiDisplayName(event))
                     .setEventType(CIEventType.SCM)
                     .setBuildCiId(buildCiId.toString())
                     .setNumber(null)
@@ -370,7 +364,7 @@ public class EventListener {
         } else {
             CIEventCause cause = dtoFactory.newDTO(CIEventCause.class);
             cause.setType(CIEventCauseType.UPSTREAM);
-            cause.setProject(getRootFullName(event)); ///
+            cause.setProject(getProjectCiId(event)); ///
             cause.setBuildCiId(getRootId(event).toString());
             cause.getCauses().add(rootCause);
             causes.add(cause);
@@ -422,29 +416,48 @@ public class EventListener {
         }
     }
 
-    private String getCiName(JSONObject event) {
+    private String getCiDisplayName(JSONObject event) {
         if (isPipelineEvent(event)) {
-            return event.getJSONObject("object_attributes").getString("ref");
+            return getBranchName(event);
         } else if (isDeleteBranchEvent(event)) {
-            return ParsedPath.getLastPartOfPath(event.getString("ref"));
+            return getBranchName(event);
         } else {
             return event.getString("build_name");
         }
     }
 
+    private String getProjectCiId(JSONObject event) {
+        return ParsedPath.PIPELINE_JOB_CI_ID_PREFIX + getProjectFullPath(event) + "/" + getConvertedBranchName(event);
+    }
+
     private String getCiFullName(JSONObject event) {
-        String fullName = getProjectFullPath(event) + "/" + getCiName(event);
-        if (isPipelineEvent(event) || isDeleteBranchEvent(event)) fullName = "pipeline:" + fullName;
-        return fullName;
+
+        if (isPipelineEvent(event) || isDeleteBranchEvent(event)) {
+            return getProjectCiId(event);
+        }
+
+        return getProjectFullPath(event) + "/" + event.getString("build_name");
     }
 
-    private String getRootName(JSONObject event) {
-        return isPipelineEvent(event) ? event.getJSONObject("object_attributes").getString("ref") : event.getString("ref");
+    private String getConvertedBranchName(JSONObject event){
+        String convertedBranchName = getBranchName(event);
+
+        if(convertedBranchName!=null && convertedBranchName.contains("/")){
+            convertedBranchName = convertedBranchName.replaceFirst("/", ParsedPath.BRANCH_WITH_SLASH_SEPARATOR);
+        }
+        return convertedBranchName;
     }
 
-    private String getRootFullName(JSONObject event) {
-        return "pipeline:" + getProjectFullPath(event) + "/" + getRootName(event);
+    private String getBranchName(JSONObject event){
+        if(isPipelineEvent(event)){
+            return event.getJSONObject("object_attributes").getString("ref");
+        } else if(isDeleteBranchEvent(event)){
+            String ref =event.getString("ref");
+            return ref.substring("refs/heads/".length());
+        }
+        return event.getString("ref");
     }
+
 
     private String getProjectFullPath(JSONObject event) {
         try {
@@ -499,7 +512,7 @@ public class EventListener {
             SCMRepository repo = dtoFactory.newDTO(SCMRepository.class);
             repo.setType(SCMType.GIT);
             repo.setUrl(event.getJSONObject("project").getString("git_http_url"));
-            repo.setBranch(event.getJSONObject("object_attributes").getString("ref"));
+            repo.setBranch(getBranchName(event));
             SCMData data = dtoFactory.newDTO(SCMData.class);
             data.setRepository(repo);
             data.setBuiltRevId(sha);

@@ -178,7 +178,7 @@ public class OctaneServices extends CIPluginServices {
 
     @Override
     public String getParentJobName(String jobId) {
-        return ParsedPath.cutLastPartOfPath(jobId);
+        return ParsedPath.cutBranchFromPath(jobId);
     }
 
 //    @Override
