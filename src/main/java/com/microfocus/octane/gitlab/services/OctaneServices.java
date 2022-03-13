@@ -352,8 +352,9 @@ public class OctaneServices extends CIPluginServices {
                 }
 
                 return dtoFactory.newDTO(CIBuildStatusInfo.class)
-                        .setBuildStatus(buildStatus.get())
                         .setJobCiId(jobCiId)
+                        .setBuildStatus(buildStatus.get())
+                        .setBuildCiId(getBuildCiId(chosenPipeline.get()))
                         .setParamName(parameterName)
                         .setParamValue(parameterValue)
                         .setResult(getCiBuildResult(status));
@@ -413,6 +414,10 @@ public class OctaneServices extends CIPluginServices {
             return CIBuildResult.ABORTED;
         if (status.equals("unstable")) return CIBuildResult.UNSTABLE;
         return CIBuildResult.UNAVAILABLE;
+    }
+
+    private String getBuildCiId(Pipeline pipeline) {
+        return String.valueOf(pipeline.getId());
     }
 
 }
