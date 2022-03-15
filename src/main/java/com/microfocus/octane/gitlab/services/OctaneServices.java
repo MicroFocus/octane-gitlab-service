@@ -352,7 +352,7 @@ public class OctaneServices extends CIPluginServices {
                 }
 
                 return dtoFactory.newDTO(CIBuildStatusInfo.class)
-                        .setJobCiId(jobCiId)
+                        .setJobCiId(jobCiId + "/" + chosenPipeline.get().getRef())
                         .setBuildStatus(buildStatus.get())
                         .setBuildCiId(getBuildCiId(chosenPipeline.get()))
                         .setParamName(parameterName)
