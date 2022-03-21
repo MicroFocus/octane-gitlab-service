@@ -11,18 +11,10 @@ import com.hp.octane.integrations.dto.events.CIEventType;
 import com.hp.octane.integrations.dto.events.MultiBranchType;
 import com.hp.octane.integrations.dto.events.PhaseType;
 import com.hp.octane.integrations.dto.parameters.CIParameter;
-import com.hp.octane.integrations.dto.scm.SCMChange;
-import com.hp.octane.integrations.dto.scm.SCMCommit;
-import com.hp.octane.integrations.dto.scm.SCMData;
-import com.hp.octane.integrations.dto.scm.SCMRepository;
-import com.hp.octane.integrations.dto.scm.SCMType;
+import com.hp.octane.integrations.dto.scm.*;
 import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
-import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
-import com.microfocus.octane.gitlab.helpers.ParsedPath;
-import com.microfocus.octane.gitlab.helpers.PathType;
-import com.microfocus.octane.gitlab.helpers.PullRequestHelper;
-import com.microfocus.octane.gitlab.helpers.VariablesHelper;
+import com.microfocus.octane.gitlab.helpers.*;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.MergeRequestEventType;
 import com.microfocus.octane.gitlab.services.OctaneServices;
@@ -38,11 +30,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
@@ -440,12 +428,7 @@ public class EventListener {
     }
 
     private String getConvertedBranchName(JSONObject event){
-        String convertedBranchName = getBranchName(event);
-
-        if(convertedBranchName!=null && convertedBranchName.contains("/")){
-            convertedBranchName = convertedBranchName.replaceFirst("/", ParsedPath.BRANCH_WITH_SLASH_SEPARATOR);
-        }
-        return convertedBranchName;
+        return ParsedPath.convertBranchName(getBranchName(event));
     }
 
     private String getBranchName(JSONObject event){
