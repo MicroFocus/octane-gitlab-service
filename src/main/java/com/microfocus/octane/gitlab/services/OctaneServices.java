@@ -350,9 +350,8 @@ public class OctaneServices extends CIPluginServices {
                 if (!buildStatus.isPresent()) {
                     throw new RuntimeException("Failed to get the correct build status");
                 }
-
                 return dtoFactory.newDTO(CIBuildStatusInfo.class)
-                        .setJobCiId(jobCiId)
+                        .setJobCiId("pipeline:" + parsedPath.getPathWithNameSpace() + "/" + chosenPipeline.get().getRef())
                         .setBuildStatus(buildStatus.get())
                         .setBuildCiId(getBuildCiId(chosenPipeline.get()))
                         .setParamName(parameterName)
