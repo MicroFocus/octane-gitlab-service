@@ -127,6 +127,14 @@ public class ParsedPath {
         return s.substring(0, s.lastIndexOf("/"));
     }
 
+    public static String convertBranchName(String branchName){
+
+        if(branchName!=null && branchName.contains("/")){
+            branchName = branchName.replaceFirst("/", ParsedPath.BRANCH_WITH_SLASH_SEPARATOR);
+        }
+        return branchName;
+    }
+
     public String getJobCiId(boolean isMultiBranchRoot){
         String jobCiId = (PIPELINE_JOB_CI_ID_PREFIX + getPathWithNameSpace()).toLowerCase();
         if(isMultiBranchRoot){
