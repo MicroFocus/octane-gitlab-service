@@ -94,20 +94,18 @@ public class EventListener {
                     ParsedPath parsedPath =null;
                     if (ciEvent.getProject().endsWith("/build")) {
                         parsedPath = new ParsedPath(ciEvent.getProject().substring(0, ciEvent.getProject().length() - 6), gitLabApi, PathType.PROJECT);
-                        if (parsedPath.isMultiBranch()) {
-                            ciEvent.setSkipValidation(true);
-                        }
+                        ciEvent.setSkipValidation(true);
+
                     }
                     if (ciEvent.getProject().contains(ParsedPath.PIPELINE_JOB_CI_ID_PREFIX)) {
                         parsedPath = new ParsedPath(ciEvent.getProject(), gitLabApi, PathType.PIPELINE);
-                        if (parsedPath.isMultiBranch()) {
 
-                                String projectDisplayName = parsedPath.getNameWithNameSpaceForDisplayName() !=null?
-                                        parsedPath.getNameWithNameSpaceForDisplayName() :parsedPath.getFullPathOfProjectWithBranch();
+                        String projectDisplayName = parsedPath.getNameWithNameSpaceForDisplayName() !=null?
+                                parsedPath.getNameWithNameSpaceForDisplayName() :parsedPath.getFullPathOfProjectWithBranch();
 
-                                ciEvent.setProjectDisplayName(projectDisplayName+ "/"+ parsedPath.getCurrentBranch());
-                                ciEvent.setParentCiId(parsedPath.getJobCiId(true)).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
-                        }
+                        ciEvent.setProjectDisplayName(projectDisplayName+ "/"+ parsedPath.getCurrentBranch());
+                        ciEvent.setParentCiId(parsedPath.getJobCiId(true)).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
+
                     }
 
                     if(isPipelineEvent(event)){
