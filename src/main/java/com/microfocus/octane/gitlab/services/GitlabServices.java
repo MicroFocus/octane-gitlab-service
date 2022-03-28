@@ -217,16 +217,11 @@ public class GitlabServices {
                     try {
                         ParsedPath parseProject = new ParsedPath(project, gitLabApi);
                         PipelineNode buildConf;
-                        if (parseProject.isMultiBranch()) {
-                            buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                    .setJobCiId(parseProject.getJobCiId(true))
-                                    .setName(project.getNameWithNamespace())
-                                    .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
-                        } else {
-                            buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                    .setJobCiId(parseProject.getJobCiId(false))
-                                    .setName(project.getNameWithNamespace());
-                        }
+
+                        buildConf = dtoFactory.newDTO(PipelineNode.class)
+                                .setJobCiId(parseProject.getJobCiId(true))
+                                .setName(project.getNameWithNamespace())
+                                .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
 
                         projectNames = projectNames + buildConf.getName()+",";
                         list.add(buildConf);
@@ -253,20 +248,13 @@ public class GitlabServices {
 
         //add a webhook to new Octane pipeline (gitlab project) in Octane
         try{
-            if (project.isMultiBranch()) {
                 addWebHookToProject(project.getFullPathOfProject(),true);
                  return dtoFactory.newDTO(PipelineNode.class)
                         .setJobCiId(project.getJobCiId(true))
                         .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT)
                          .setName(project.getNameWithNameSpaceForDisplayName())
                         .setParameters(getParameters(project));
-            }
-            project = new ParsedPath(buildId, gitLabApi, PathType.PIPELINE);
-            addWebHookToProject(project.getId(),true);
-            return   dtoFactory.newDTO(PipelineNode.class)
-                    .setJobCiId(project.getJobCiId(false))
-                    .setName(project.getNameWithNameSpaceForDisplayName())
-                    .setParameters(getParameters(project));
+
         } catch (GitLabApiException e){
             log.error("unable to update webhook when create a pipeline in Octane for project:"+ project.getDisplayName(),e);
             return null;

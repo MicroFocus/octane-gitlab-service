@@ -90,11 +90,6 @@ public class ParsedPath {
         this.nameWithNameSpaceForDisplayName = project.getNameWithNamespace();
     }
 
-    public Boolean isMultiBranch() {
-        List<Branch> branches = getBranches();
-        return branches != null ? branches.size() > 1 : false;
-    }
-
     public String getPathWithNameSpace() {
        // return groups + "/" + displayName;
        return (this.pathWithNameSpace!= null ? this.pathWithNameSpace : this.getFullPathOfProject());
