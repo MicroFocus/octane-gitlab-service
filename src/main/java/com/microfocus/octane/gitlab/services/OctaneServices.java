@@ -29,7 +29,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
-import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Job;
 import org.gitlab4j.api.models.Pipeline;
 import org.gitlab4j.api.models.Variable;
@@ -37,7 +36,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import javax.validation.constraints.NotNull;
 import javax.xml.transform.TransformerConfigurationException;
 import java.io.*;
 import java.net.URL;
@@ -169,11 +167,27 @@ public class OctaneServices extends CIPluginServices {
     @Override
     public PipelineNode getPipeline(String rootJobCiId) {
         try {
-            return gitlabServices.createStructure(rootJobCiId);
+            boolean isMultiBranch = checkIfMultiBranchParentId(rootJobCiId);
+            return gitlabServices.createStructure(rootJobCiId, isMultiBranch);
         } catch (Exception e) {
             log.warn("Failed to return the pipeline, using null as default.", e);
             return null;
         }
+    }
+
+    private boolean checkIfMultiBranchParentId(String rootJobCiId) {
+
+        try {
+            ParsedPath parsedPath = new ParsedPath(rootJobCiId,gitLabApi,PathType.MULTI_BRUNCH);
+            gitLabApi.getProjectApi().getProject(parsedPath.getFullPathOfProject());
+        } catch (GitLabApiException e) {
+            if (e.getHttpStatus() == HttpStatus.SC_NOT_FOUND){
+               return false;
+            }
+        }
+
+        //else ?? ??
+        return true;
     }
 
     @Override
