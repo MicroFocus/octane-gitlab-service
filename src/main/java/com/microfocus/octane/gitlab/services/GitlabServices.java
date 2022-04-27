@@ -221,6 +221,7 @@ public class GitlabServices {
                         buildConf = dtoFactory.newDTO(PipelineNode.class)
                                 .setJobCiId(parseProject.getJobCiId(true))
                                 .setName(project.getNameWithNamespace())
+                                .setDefaultBranchName(project.getDefaultBranch())
                                 .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
 
                         projectNames = projectNames + buildConf.getName()+",";
