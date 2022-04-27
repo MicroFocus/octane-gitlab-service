@@ -12,6 +12,7 @@ import com.microfocus.octane.gitlab.helpers.ParsedPath;
 import com.microfocus.octane.gitlab.helpers.PathType;
 import com.microfocus.octane.gitlab.helpers.VariablesHelper;
 import com.microfocus.octane.gitlab.testresults.TestResultsCleanUpRunnable;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -244,22 +245,25 @@ public class GitlabServices {
         return gitLabApi.getUserApi().getCurrentUser().getIsAdmin() != null && gitLabApi.getUserApi().getCurrentUser().getIsAdmin();
     }
 
-    PipelineNode createStructure(String buildId) {
-        ParsedPath project = new ParsedPath(buildId, gitLabApi, PathType.MULTI_BRUNCH);
+    PipelineNode createStructure(String buildId, boolean isMultiBranchParent) {
 
-        //add a webhook to new Octane pipeline (gitlab project) in Octane
-        try{
-                addWebHookToProject(project.getFullPathOfProject(),true);
-                 return dtoFactory.newDTO(PipelineNode.class)
-                        .setJobCiId(project.getJobCiId(true))
-                        .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT)
-                         .setName(project.getNameWithNameSpaceForDisplayName())
-                        .setParameters(getParameters(project));
+        ParsedPath project = new ParsedPath(buildId, gitLabApi, isMultiBranchParent? PathType.MULTI_BRUNCH : PathType.PIPELINE);
+        try {
+            gitLabApi.getProjectApi().getProject(project.getFullPathOfProject());
+            addWebHookToProject(project.getFullPathOfProject(),true);
+            return dtoFactory.newDTO(PipelineNode.class)
+                    .setJobCiId(project.getJobCiId(isMultiBranchParent))
+                    .setMultiBranchType(isMultiBranchParent ? MultiBranchType.MULTI_BRANCH_PARENT : MultiBranchType.MULTI_BRANCH_CHILD)
+                    .setName(project.getNameWithNameSpaceForDisplayName())
+                    .setParameters(getParameters(project));
 
         } catch (GitLabApiException e){
-            log.error("unable to update webhook when create a pipeline in Octane for project:"+ project.getDisplayName(),e);
-            return null;
+            if(e.getHttpStatus() != HttpStatus.SC_NOT_FOUND) {
+                log.error("unable to update webhook when create a pipeline in Octane for project:"+ project.getDisplayName(),e);
+            }
         }
+
+        return null;
     }
 
     public List<CIParameter> getParameters(ParsedPath project) {
