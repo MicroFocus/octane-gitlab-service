@@ -4,13 +4,11 @@ import com.hp.octane.integrations.CIPluginServices;
 import com.hp.octane.integrations.OctaneConfiguration;
 import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.configuration.CIProxyConfiguration;
-import com.hp.octane.integrations.dto.general.CIBuildStatusInfo;
-import com.hp.octane.integrations.dto.general.CIJobsList;
-import com.hp.octane.integrations.dto.general.CIPluginInfo;
-import com.hp.octane.integrations.dto.general.CIServerInfo;
+import com.hp.octane.integrations.dto.general.*;
 import com.hp.octane.integrations.dto.parameters.CIParameter;
 import com.hp.octane.integrations.dto.parameters.CIParameters;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
+import com.hp.octane.integrations.dto.scm.Branch;
 import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
 import com.hp.octane.integrations.dto.snapshots.CIBuildStatus;
 import com.hp.octane.integrations.dto.tests.*;
@@ -229,6 +227,37 @@ public class OctaneServices extends CIPluginServices {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public CIBranchesList getBranchesList(String jobCiId, String filterBranchName) {
+        ParsedPath parsedPath = new ParsedPath(jobCiId, gitLabApi, PathType.PIPELINE);
+
+        try {
+            List<Branch> result = new ArrayList<>();
+            String path = parsedPath.getPathWithNameSpace();
+
+            List<Branch> branches = gitLabApi.getRepositoryApi().getBranches(path, filterBranchName)
+                    .stream().map(branch -> dtoFactory.newDTO(Branch.class)
+                            .setName(branch.getName())
+                            .setInternalId(ParsedPath.convertBranchName(branch.getName())))
+                    .collect(Collectors.toList());
+            result.addAll(branches);
+
+            List<Branch> tags = gitLabApi.getTagsApi().getTags(path, null, null, filterBranchName)
+                    .stream().map(tag -> dtoFactory.newDTO(Branch.class)
+                            .setName(tag.getName())
+                            .setInternalId(ParsedPath.convertBranchName(tag.getName())))
+                    .collect(Collectors.toList());
+            result.addAll(tags);
+
+            return dtoFactory.newDTO(CIBranchesList.class)
+                    .setBranches(result);
+        } catch (GitLabApiException e) {
+            log.error("Failed to get list of branches", e);
+            throw new RuntimeException(e);
+        }
+    }
+
 
     @Override
     public InputStream getTestsResult(String jobFullName, String buildNumber) {
