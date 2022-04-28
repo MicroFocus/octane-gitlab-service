@@ -5,7 +5,7 @@
 
     <groupId>com.microfocus.octane.ciplugins</groupId>
     <artifactId>octane-gitlab-service</artifactId>
-    <version>1.1.127-SNAPSHOT</version>
+    <version>1.1.128-SNAPSHOT</version>
 
     <name>ALM Octane GitLab CI Service</name>
     <description>
