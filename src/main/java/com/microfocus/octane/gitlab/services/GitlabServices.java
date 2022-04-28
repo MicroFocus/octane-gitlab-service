@@ -222,6 +222,7 @@ public class GitlabServices {
                         buildConf = dtoFactory.newDTO(PipelineNode.class)
                                 .setJobCiId(parseProject.getJobCiId(true))
                                 .setName(project.getNameWithNamespace())
+                                .setDefaultBranchName(project.getDefaultBranch())
                                 .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
 
                         projectNames = projectNames + buildConf.getName()+",";
@@ -248,10 +249,11 @@ public class GitlabServices {
 
         ParsedPath project = new ParsedPath(buildId, gitLabApi, isMultiBranchParent? PathType.MULTI_BRUNCH : PathType.PIPELINE);
         try {
-            gitLabApi.getProjectApi().getProject(project.getFullPathOfProject());
+            Project currentProject = gitLabApi.getProjectApi().getProject(project.getFullPathOfProject());
             addWebHookToProject(project.getFullPathOfProject(),true);
             return dtoFactory.newDTO(PipelineNode.class)
                     .setJobCiId(project.getJobCiId(isMultiBranchParent))
+                    .setDefaultBranchName(currentProject.getDefaultBranch())
                     .setMultiBranchType(isMultiBranchParent ? MultiBranchType.MULTI_BRANCH_PARENT : MultiBranchType.MULTI_BRANCH_CHILD)
                     .setName(project.getNameWithNameSpaceForDisplayName())
                     .setParameters(getParameters(project));
