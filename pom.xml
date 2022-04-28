@@ -69,7 +69,7 @@
 
     <properties>
         <java.version>1.8</java.version>
-        <integrations.sdk.version>2.7.2.6</integrations.sdk.version>
+        <integrations.sdk.version>2.7.4.1</integrations.sdk.version>
         <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
         <maven-gpg-plugin.version>1.5</maven-gpg-plugin.version>
         <maven.compiler.plugin.version>1.8</maven.compiler.plugin.version>
