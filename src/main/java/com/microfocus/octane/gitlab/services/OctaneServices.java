@@ -15,6 +15,7 @@ import com.hp.octane.integrations.dto.tests.*;
 import com.hp.octane.integrations.exceptions.PermissionException;
 import com.hp.octane.integrations.services.configurationparameters.EncodeCiJobBase64Parameter;
 import com.hp.octane.integrations.services.configurationparameters.factory.ConfigurationParameterFactory;
+import com.hp.octane.integrations.utils.SdkConstants;
 import com.microfocus.octane.gitlab.app.Application;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
 import com.microfocus.octane.gitlab.helpers.*;
@@ -53,7 +54,7 @@ public class OctaneServices extends CIPluginServices {
     private static ApplicationSettings applicationSettings;
     private static GitlabServices gitlabServices;
 
-//    private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
+    //    private final Transformer nunitTransformer = TransformerFactory.newInstance().newTransformer(new StreamSource(this.getClass().getClassLoader().getResourceAsStream("hudson/plugins/nunit/" + NUNIT_TO_JUNIT_XSLFILE_STR)));
     private static GitLabApi gitLabApi;
     private final String RUNNING_STATUS = "running";
     private final String PENDING_STATUS = "pending";
@@ -176,11 +177,11 @@ public class OctaneServices extends CIPluginServices {
     private boolean checkIfMultiBranchParentId(String rootJobCiId) {
 
         try {
-            ParsedPath parsedPath = new ParsedPath(rootJobCiId,gitLabApi,PathType.MULTI_BRUNCH);
+            ParsedPath parsedPath = new ParsedPath(rootJobCiId, gitLabApi, PathType.MULTI_BRUNCH);
             gitLabApi.getProjectApi().getProject(parsedPath.getFullPathOfProject());
         } catch (GitLabApiException e) {
-            if (e.getHttpStatus() == HttpStatus.SC_NOT_FOUND){
-               return false;
+            if (e.getHttpStatus() == HttpStatus.SC_NOT_FOUND) {
+                return false;
             }
         }
 
@@ -210,7 +211,7 @@ public class OctaneServices extends CIPluginServices {
         try {
             //check whether this user is permitted to run the pipeline
             boolean canUserRunPipeline = applicationSettings.getConfig().canRunPipeline();
-            if(!canUserRunPipeline) {
+            if (!canUserRunPipeline) {
                 log.error("Current user is not permitted to run pipelines");
                 throw new PermissionException(HttpStatus.SC_FORBIDDEN);
             }
@@ -268,11 +269,11 @@ public class OctaneServices extends CIPluginServices {
 
             //report gherkin test results
 
-            File mqmTestResultsFile = TestResultsHelper.getMQMTestResultsFilePath(project.getId() ,job.getId(),applicationSettings.getConfig().getTestResultsOutputFolderPath());
+            File mqmTestResultsFile = TestResultsHelper.getMQMTestResultsFilePath(project.getId(), job.getId(), applicationSettings.getConfig().getTestResultsOutputFolderPath());
             InputStream output = null;
 
 
-            if (mqmTestResultsFile.exists() && mqmTestResultsFile.length() > 0){
+            if (mqmTestResultsFile.exists() && mqmTestResultsFile.length() > 0) {
                 log.info(String.format("get Gherkin Tests Result of %s from  %s, file exist=%s",
                         project.getDisplayName(), mqmTestResultsFile.getAbsolutePath(), mqmTestResultsFile.exists()));
                 try {
@@ -342,15 +343,17 @@ public class OctaneServices extends CIPluginServices {
             List<Pipeline> pipelines = gitLabApi.getPipelineApi()
                     .getPipelines(parsedPath.getPathWithNameSpace());
 
-            int pipelineIdWithParameter = getIdWhereParameter(
-                    parsedPath.getPathWithNameSpace(),
-                    pipelines,
-                    ciParameters.getParameters().get(0));
+            CIParameter octaneExecutionId = ciParameters.getParameters().stream()
+                    .filter(parameter -> parameter.getName().equals(SdkConstants.JobParameters.OCTANE_AUTO_ACTION_EXECUTION_ID_PARAMETER_NAME))
+                    .findAny().orElse(null);
 
-            gitLabApi.getPipelineApi().cancelPipelineJobs(
-                    parsedPath.getPathWithNameSpace(),
-                    pipelineIdWithParameter);
+            if (octaneExecutionId != null) {
+                int pipelineIdWithParameter = getIdWhereParameter(parsedPath.getPathWithNameSpace(),
+                        pipelines, octaneExecutionId);
 
+                gitLabApi.getPipelineApi().cancelPipelineJobs(parsedPath.getPathWithNameSpace(),
+                        pipelineIdWithParameter);
+            }
         } catch (GitLabApiException e) {
             log.error("Failed to stop the pipeline run", e);
             throw new RuntimeException(e);
@@ -364,24 +367,22 @@ public class OctaneServices extends CIPluginServices {
             List<Pipeline> pipelines = gitLabApi.getPipelineApi()
                     .getPipelines(parsedPath.getPathWithNameSpace());
 
-            Optional<Pipeline> chosenPipeline = pipelines.stream()
-                    .map(pipeline -> {
-                        try {
-                            List<Variable> pipelineVariables = gitLabApi.getPipelineApi().getPipelineVariables(
-                                    parsedPath.getPathWithNameSpace(),
-                                    pipeline.getId());
+            Optional<Pipeline> chosenPipeline = pipelines.stream().map(pipeline -> {
+                try {
+                    List<Variable> pipelineVariables = gitLabApi.getPipelineApi()
+                            .getPipelineVariables(parsedPath.getPathWithNameSpace(), pipeline.getId());
 
-                            for (Variable variable : pipelineVariables) {
-                                if (variable.getKey().equals(parameterName) && variable.getValue().equals(parameterValue)) {
-                                    return pipeline;
-                                }
-                            }
-                            return null;
-                        } catch (GitLabApiException e) {
-                            log.error("Failed to get variables from pipeline", e);
-                            throw new RuntimeException(e);
+                    for (Variable variable : pipelineVariables) {
+                        if (variable.getKey().equals(parameterName) && variable.getValue().equals(parameterValue)) {
+                            return pipeline;
                         }
-                    }).filter(Objects::nonNull).findAny();
+                    }
+                    return null;
+                } catch (GitLabApiException e) {
+                    log.error("Failed to get variables from pipeline", e);
+                    throw new RuntimeException(e);
+                }
+            }).filter(Objects::nonNull).findAny();
 
             if (chosenPipeline.isPresent()) {
                 String status = chosenPipeline.get().getStatus().toValue();
@@ -408,7 +409,7 @@ public class OctaneServices extends CIPluginServices {
         }
     }
 
-    private int getIdWhereParameter(String cleanedPath, List<Pipeline> pipelines, CIParameter ciParameter) {
+    private int getIdWhereParameter(String cleanedPath, List<Pipeline> pipelines, CIParameter executionId) {
         pipelines = pipelines.stream()
                 .filter(this::pipelineInQueue)
                 .collect(Collectors.toList());
@@ -418,14 +419,14 @@ public class OctaneServices extends CIPluginServices {
                     try {
                         pipelineVariables = gitLabApi.getPipelineApi()
                                 .getPipelineVariables(cleanedPath, pipeline.getId());
-                    } catch (GitLabApiException e) {
-                        e.printStackTrace();
-                    }
-                    assert pipelineVariables != null;
-                    for (Variable variable : pipelineVariables) {
-                        if (variable.getValue().equals(ciParameter.getValue().toString())) {
-                            return pipeline.getId();
+
+                        for (Variable variable : pipelineVariables) {
+                            if (variable.getValue().equals(executionId.getValue().toString())) {
+                                return pipeline.getId();
+                            }
                         }
+                    } catch (GitLabApiException e) {
+                        log.error("Failed to get parameters of the pipeline", e);
                     }
                     return NO_SUCH_PIPELINE;
                 }).filter(integer -> !Objects.equals(integer, NO_SUCH_PIPELINE))
