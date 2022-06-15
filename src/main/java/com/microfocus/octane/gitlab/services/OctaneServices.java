@@ -222,43 +222,20 @@ public class OctaneServices extends CIPluginServices {
                 log.error("Current user is not permitted to run pipelines");
                 throw new PermissionException(HttpStatus.SC_FORBIDDEN);
             }
-            final String[] branch = new String[1];
 
             List<CIParameter> parameters = ciParameters.getParameters();
             Optional<String> testsToRunParam =
                     parameters.stream().filter(param -> param.getName().equals(TESTS_TO_RUN_PARAM_NAME))
                             .map(this::getStringValueFromParam).findFirst();
 
-            final String finalJobCiId = jobCiId;
+            final StringBuilder jobCiIdBuilder = new StringBuilder(jobCiId);
             testsToRunParam.ifPresent(testsToRun -> {
-                Optional<String> testRunnerBranch = getPipeline(finalJobCiId).getParameters().stream()
-                        .filter(param -> param.getName().equalsIgnoreCase(TEST_RUNNER_BRANCH_PARAM_NAME))
-                        .map(this::getStringValueFromParam).findFirst();
-
-                branch[0] = testRunnerBranch.orElse("");
-
-                Optional<String> frameworkParam = getPipeline(finalJobCiId).getParameters().stream()
-                        .filter(param -> param.getName().equalsIgnoreCase(TEST_RUNNER_FRAMEWORK_PARAM_NAME))
-                        .map(this::getStringValueFromParam).findFirst();
-
-                frameworkParam.ifPresentOrElse(framework -> {
-                    String convertedTestsToRun = getConvertedTestsToRun(testsToRun, framework);
-
-                    List<CIParameter> parametersWithTestsToRun = parameters.stream().peek(parameter -> {
-                        if (parameter.getName().equals(TESTS_TO_RUN_PARAM_NAME)) {
-                            parameter.setValue(convertedTestsToRun);
-                        }
-                    }).collect(Collectors.toList());
-
-                    ciParameters.setParameters(parametersWithTestsToRun);
-                }, () -> {
-                    RuntimeException ex = new RuntimeException("Framework parameter not defined for test runner.");
-                    log.error(ex.getMessage(), ex);
-                    throw ex;
-                });
+                ciParameters.setParameters(
+                    getCiParamsWithTestsToRun(jobCiIdBuilder.toString(), parameters, testsToRun));
+                jobCiIdBuilder.append(getCiBranch(jobCiIdBuilder.toString()).orElse(""));
             });
 
-            jobCiId += branch[0].isEmpty() || branch[0].isBlank() ? "" : '/' + branch[0];
+            jobCiId = jobCiIdBuilder.toString();
             ParsedPath parsedPath = new ParsedPath(jobCiId, gitLabApi, PathType.PIPELINE);
 
             gitLabApi.getPipelineApi().createPipeline(
@@ -272,6 +249,37 @@ public class OctaneServices extends CIPluginServices {
         }
     }
 
+    private List<CIParameter> getCiParamsWithTestsToRun(String jobCiId, List<CIParameter> parameters, String testsToRun) {
+        List<CIParameter> resultedParams = new ArrayList<>();
+
+        Optional<String> frameworkParam = getPipeline(jobCiId).getParameters().stream()
+                .filter(param -> param.getName().equalsIgnoreCase(TEST_RUNNER_FRAMEWORK_PARAM_NAME))
+                .map(this::getStringValueFromParam).findFirst();
+
+        frameworkParam.ifPresentOrElse(framework -> {
+            String convertedTestsToRun = getConvertedTestsToRun(testsToRun, framework);
+
+            resultedParams.addAll(parameters.stream().peek(parameter -> {
+                if (parameter.getName().equals(TESTS_TO_RUN_PARAM_NAME)) {
+                    parameter.setValue(convertedTestsToRun);
+                }
+            }).collect(Collectors.toList()));
+        }, () -> {
+            RuntimeException ex = new RuntimeException("Framework parameter not defined for test runner.");
+            log.error(ex.getMessage(), ex);
+            throw ex;
+        });
+
+        return resultedParams;
+    }
+
+    private Optional<String> getCiBranch(String jobCiId) {
+        return getPipeline(jobCiId).getParameters().stream()
+                .filter(param -> param.getName().equalsIgnoreCase(TEST_RUNNER_BRANCH_PARAM_NAME))
+                .map(this::getStringValueFromParam).filter(branch -> !branch.isEmpty() && !branch.isBlank())
+                .findFirst();
+    }
+
     private String getStringValueFromParam(CIParameter parameter) {
         return parameter.getValue() != null
                 ? parameter.getValue().toString()
@@ -283,7 +291,7 @@ public class OctaneServices extends CIPluginServices {
         try {
             frameworkToUse = TestsToRunFramework.fromValue(framework);
         } catch (IllegalArgumentException iae) {
-            RuntimeException ex = new RuntimeException(framework + " is not a valid framework.")
+            RuntimeException ex = new RuntimeException(framework + " is not a valid framework.");
             log.error(ex.getMessage(), ex);
             throw ex;
         }
