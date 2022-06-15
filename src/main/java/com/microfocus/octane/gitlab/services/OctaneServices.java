@@ -231,9 +231,8 @@ public class OctaneServices extends CIPluginServices {
 
             final StringBuilder jobCiIdBuilder = new StringBuilder(jobCiId);
             testsToRunParam.ifPresent(testsToRun -> {
-                ciParameters.setParameters(
-                    getCiParamsWithTestsToRun(jobCiIdBuilder.toString(), parameters, testsToRun));
-                jobCiIdBuilder.append(getCiBranch(jobCiIdBuilder.toString()).orElse(""));
+                ciParameters.setParameters(getCiParamsWithTestsToRun(jobCiIdBuilder.toString(), parameters, testsToRun));
+                jobCiIdBuilder.append(getCiBranch(jobCiIdBuilder.toString()).map(branch -> "/" + branch).orElse(""));
             });
 
             jobCiId = jobCiIdBuilder.toString();
