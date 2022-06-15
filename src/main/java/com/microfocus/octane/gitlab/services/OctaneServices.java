@@ -222,24 +222,21 @@ public class OctaneServices extends CIPluginServices {
             final String[] branch = new String[1];
 
             List<CIParameter> parameters = ciParameters.getParameters();
-            Optional<CIParameter> testsToRunParam =
-                    parameters.stream().filter(param -> param.getName().equals("testsToRun")).findFirst();
+            Optional<String> testsToRunParam =
+                    parameters.stream().filter(param -> param.getName().equals("testsToRun"))
+                            .map(this::getStringValueFromParam).findFirst();
 
             final String finalJobCiId = jobCiId;
             testsToRunParam.ifPresent(testsToRun -> {
                 Optional<String> testRunnerBranch = getPipeline(finalJobCiId).getParameters().stream()
                         .filter(param -> param.getName().equalsIgnoreCase("testRunnerBranch"))
-                        .map(param -> param.getValue() != null ?
-                                param.getValue().toString() :
-                                param.getDefaultValue().toString()).findFirst();
+                        .map(this::getStringValueFromParam).findFirst();
 
                 branch[0] = testRunnerBranch.orElse("");
 
                 Optional<String> frameworkParam = getPipeline(finalJobCiId).getParameters().stream()
                         .filter(param -> param.getName().equalsIgnoreCase("testFramework"))
-                        .map(param -> param.getValue() != null ?
-                                param.getValue().toString() :
-                                param.getDefaultValue().toString()).findFirst();
+                        .map(this::getStringValueFromParam).findFirst();
 
                 frameworkParam.ifPresentOrElse(framework -> {
                     String convertedTestsToRun = getConvertedTestsToRun(testsToRun, framework);
@@ -272,7 +269,13 @@ public class OctaneServices extends CIPluginServices {
         }
     }
 
-    private String getConvertedTestsToRun(CIParameter testsToRun, String framework) {
+    private String getStringValueFromParam(CIParameter parameter) {
+        return parameter.getValue() != null
+                ? parameter.getValue().toString()
+                : parameter.getDefaultValue().toString();
+    }
+
+    private String getConvertedTestsToRun(String testsToRun, String framework) {
         TestsToRunFramework frameworkToUse;
         try {
             frameworkToUse = TestsToRunFramework.fromValue(framework);
@@ -283,7 +286,7 @@ public class OctaneServices extends CIPluginServices {
 
         TestsToRunConverter converter = TestsToRunConvertersFactory.createConverter(frameworkToUse);
 
-        TestsToRunConverterResult result = converter.convert(testsToRun.getValue().toString(), "", null);
+        TestsToRunConverterResult result = converter.convert(testsToRun, "", null);
         return result.getConvertedTestsString();
     }
 
