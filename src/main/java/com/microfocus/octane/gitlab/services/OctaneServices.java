@@ -283,8 +283,9 @@ public class OctaneServices extends CIPluginServices {
         try {
             frameworkToUse = TestsToRunFramework.fromValue(framework);
         } catch (IllegalArgumentException iae) {
-            log.error(framework + " is not a valid framework.");
-            throw new RuntimeException(framework + " is not a valid framework.");
+            RuntimeException ex = new RuntimeException(framework + " is not a valid framework.")
+            log.error(ex.getMessage(), ex);
+            throw ex;
         }
 
         TestsToRunConverter converter = TestsToRunConvertersFactory.createConverter(frameworkToUse);
