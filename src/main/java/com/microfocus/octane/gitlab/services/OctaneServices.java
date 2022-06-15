@@ -13,6 +13,10 @@ import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
 import com.hp.octane.integrations.dto.snapshots.CIBuildStatus;
 import com.hp.octane.integrations.dto.tests.*;
 import com.hp.octane.integrations.exceptions.PermissionException;
+import com.hp.octane.integrations.executor.TestsToRunConverter;
+import com.hp.octane.integrations.executor.TestsToRunConverterResult;
+import com.hp.octane.integrations.executor.TestsToRunConvertersFactory;
+import com.hp.octane.integrations.executor.TestsToRunFramework;
 import com.hp.octane.integrations.services.configurationparameters.EncodeCiJobBase64Parameter;
 import com.hp.octane.integrations.services.configurationparameters.factory.ConfigurationParameterFactory;
 import com.hp.octane.integrations.utils.SdkConstants;
@@ -215,7 +219,46 @@ public class OctaneServices extends CIPluginServices {
                 log.error("Current user is not permitted to run pipelines");
                 throw new PermissionException(HttpStatus.SC_FORBIDDEN);
             }
+            final String[] branch = new String[1];
 
+            List<CIParameter> parameters = ciParameters.getParameters();
+            Optional<CIParameter> testsToRunParam =
+                    parameters.stream().filter(param -> param.getName().equals("testsToRun")).findFirst();
+
+            final String finalJobCiId = jobCiId;
+            testsToRunParam.ifPresent(testsToRun -> {
+                Optional<String> testRunnerBranch = getPipeline(finalJobCiId).getParameters().stream()
+                        .filter(param -> param.getName().equalsIgnoreCase("testRunnerBranch"))
+                        .map(param -> param.getValue() != null ?
+                                param.getValue().toString() :
+                                param.getDefaultValue().toString()).findFirst();
+
+                branch[0] = testRunnerBranch.orElse("");
+
+                Optional<String> frameworkParam = getPipeline(finalJobCiId).getParameters().stream()
+                        .filter(param -> param.getName().equalsIgnoreCase("testFramework"))
+                        .map(param -> param.getValue() != null ?
+                                param.getValue().toString() :
+                                param.getDefaultValue().toString()).findFirst();
+
+                frameworkParam.ifPresentOrElse(framework -> {
+                    String convertedTestsToRun = getConvertedTestsToRun(testsToRun, framework);
+
+                    List<CIParameter> parametersWithTestsToRun = parameters.stream().peek(parameter -> {
+                        if (parameter.getName().equals("testsToRun")) {
+                            parameter.setValue(convertedTestsToRun);
+                        }
+                    }).collect(Collectors.toList());
+
+                    ciParameters.setParameters(parametersWithTestsToRun);
+                }, () -> {
+                    RuntimeException ex = new RuntimeException("Framework parameter not defined for test runner.");
+                    log.error(ex.getMessage(), ex);
+                    throw ex;
+                });
+            });
+
+            jobCiId += branch[0].isEmpty() || branch[0].isBlank() ? "" : '/' + branch[0];
             ParsedPath parsedPath = new ParsedPath(jobCiId, gitLabApi, PathType.PIPELINE);
 
             gitLabApi.getPipelineApi().createPipeline(
@@ -227,6 +270,21 @@ public class OctaneServices extends CIPluginServices {
             log.error("Failed to start a pipeline", e);
             throw new RuntimeException(e);
         }
+    }
+
+    private String getConvertedTestsToRun(CIParameter testsToRun, String framework) {
+        TestsToRunFramework frameworkToUse;
+        try {
+            frameworkToUse = TestsToRunFramework.fromValue(framework);
+        } catch (IllegalArgumentException iae) {
+            log.error(framework + " is not a valid framework.");
+            throw new RuntimeException(framework + " is not a valid framework.");
+        }
+
+        TestsToRunConverter converter = TestsToRunConvertersFactory.createConverter(frameworkToUse);
+
+        TestsToRunConverterResult result = converter.convert(testsToRun.getValue().toString(), "", null);
+        return result.getConvertedTestsString();
     }
 
     @Override
