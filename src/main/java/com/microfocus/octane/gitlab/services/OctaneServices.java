@@ -62,6 +62,9 @@ public class OctaneServices extends CIPluginServices {
     private static GitLabApi gitLabApi;
     private final String RUNNING_STATUS = "running";
     private final String PENDING_STATUS = "pending";
+    private final String TESTS_TO_RUN_PARAM_NAME = "testsToRun";
+    private final String TEST_RUNNER_BRANCH_PARAM_NAME = "testRunnerBranch";
+    private final String TEST_RUNNER_FRAMEWORK_PARAM_NAME = "testRunnerFramework";
     private final Integer NO_SUCH_PIPELINE = -1;
 
     @Autowired
@@ -223,26 +226,26 @@ public class OctaneServices extends CIPluginServices {
 
             List<CIParameter> parameters = ciParameters.getParameters();
             Optional<String> testsToRunParam =
-                    parameters.stream().filter(param -> param.getName().equals("testsToRun"))
+                    parameters.stream().filter(param -> param.getName().equals(TESTS_TO_RUN_PARAM_NAME))
                             .map(this::getStringValueFromParam).findFirst();
 
             final String finalJobCiId = jobCiId;
             testsToRunParam.ifPresent(testsToRun -> {
                 Optional<String> testRunnerBranch = getPipeline(finalJobCiId).getParameters().stream()
-                        .filter(param -> param.getName().equalsIgnoreCase("testRunnerBranch"))
+                        .filter(param -> param.getName().equalsIgnoreCase(TEST_RUNNER_BRANCH_PARAM_NAME))
                         .map(this::getStringValueFromParam).findFirst();
 
                 branch[0] = testRunnerBranch.orElse("");
 
                 Optional<String> frameworkParam = getPipeline(finalJobCiId).getParameters().stream()
-                        .filter(param -> param.getName().equalsIgnoreCase("testFramework"))
+                        .filter(param -> param.getName().equalsIgnoreCase(TEST_RUNNER_FRAMEWORK_PARAM_NAME))
                         .map(this::getStringValueFromParam).findFirst();
 
                 frameworkParam.ifPresentOrElse(framework -> {
                     String convertedTestsToRun = getConvertedTestsToRun(testsToRun, framework);
 
                     List<CIParameter> parametersWithTestsToRun = parameters.stream().peek(parameter -> {
-                        if (parameter.getName().equals("testsToRun")) {
+                        if (parameter.getName().equals(TESTS_TO_RUN_PARAM_NAME)) {
                             parameter.setValue(convertedTestsToRun);
                         }
                     }).collect(Collectors.toList());
