@@ -223,6 +223,7 @@ public class OctaneServices extends CIPluginServices {
                 throw new PermissionException(HttpStatus.SC_FORBIDDEN);
             }
 
+            // If testsToRun parameter is present this means that the pipeline is a test runner
             List<CIParameter> parameters = ciParameters.getParameters();
             Optional<String> testsToRunParam =
                     parameters.stream().filter(param -> param.getName().equals(TESTS_TO_RUN_PARAM_NAME))
