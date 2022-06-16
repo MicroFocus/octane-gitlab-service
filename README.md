@@ -240,6 +240,69 @@ gitlab.variables.useSSHFormatVarName).
 7. If you modify anything in the code, a new build is automatically triggered.
 8. Look at the results again, and pay attention to the “Commits” area.
 
+## Integration with ALM Octane Test Framework
+
+The ALM Octane Test Framework allows running of separate automated tests from ALM Octane using Test Runners.
+
+### How to configure a Test Runner in GitLab
+
+1. On your current repository (the one containing the code and the tests) create a new branch which will hold the test runner pipeline.
+2. Configure the following 3 variables on the project level:
+   1. testsToRun - the value does not matter. The integration will use this variable to populate the tests to run with the ones selected in ALM Octane.
+   2. testRunnerBranch - the value will be the name of the branch created earlier, which holds the test runner pipeline.
+   3. testRunnerFramework - the value should be one of the following, which are supported by ALM Octane:
+      * mvnSurefire - For running JUnit/TestNG over Maven Surefire/Failsafe
+      * uft - For running Micro Focus UFT
+      * mbt - For running Micro Focus MBT
+      * cucumber_jvm - For running Cucumber-JVM over Maven
+      * bdd_scenario - For running BDD Scenario tests
+      * jbehave - For running JBehave over Maven
+      * protractor - For running tests using Protractor 
+      * gradle - For running tests using Gradle
+3. In the created branch configure the pipeline `.gitlab-ci.yml` file to include the logic for running the tests received in the testsToRun variable.
+Example for `mvnSurefire`:
+    ```
+   image: maven:3.3.9-jdk-8
+    stages:
+     - maven
+
+    maven-code-job:
+      stage: maven
+      script:
+      - echo "starting to run maven..."
+      - mvn -Dtest=$testsToRun test
+
+      artifacts:
+        paths:
+        - target/surefire-reports/*.xml
+        - target/site/jacoco/*.xml
+
+   ``` 
+   
+### How to configure a Test Runner in ALM Octane
+
+1. Go to `Spaces`>`Devops`>`Test Runners`
+2. Create a new Test Runner with a name of your choosing
+3. Select the GitLab Integration CI Server
+4. For the Job select the one that contains the Test Runner created on GitLab
+
+The Job dropdown will only contain jobs that have the `testsToRun` variable configured (that is how ALM Octane knows that the pipeline represents a Test Runner).
+
+### How to run Automated Tests using a Test Runner in ALM Octane
+
+1. Run a pipeline job which runs all the tests in order to inject them in ALM Octane as Automated Tests.
+2. Create a Test Suite which includes the tests that you want to run.
+3. Inside the Test Suite assign the Test Runner (Test Runner field) to the tests.
+5. Plan the Test Suite.
+6. Go to the planned Suite Run, select the desired Tests and hit the `Run` button.
+7. The Test Runner will run the selected tests.
+
+As the Test Runner executes a pipeline on the GitLab side, a job entity will also be created in ALM Octane which can be viewed in the Pipeline Section.
+Keep in mind that the Test Runner pipeline should only be executed using the Test Runner and not by manually running it from the Pipeline menu.
+
+More about ALM Octane Testing Framework here:
+https://admhelp.microfocus.com/octane/en/16.0.100-16.0.400/Online/Content/AdminGuide/how-setup-testing-integration.htm
+
 ## Cleanup webhooks
 
 It is possible to start the service in clean mode.  
