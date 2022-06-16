@@ -250,15 +250,11 @@ The ALM Octane Test Framework allows running of separate automated tests from AL
 2. Configure the following 3 variables on the project level:
    1. testsToRun - the value does not matter. The integration will use this variable to populate the tests to run with the ones selected in ALM Octane.
    2. testRunnerBranch - the value will be the name of the branch created earlier, which holds the test runner pipeline.
-   3. testRunnerFramework - the value should be one of the following, which are supported by ALM Octane:
+   3. testRunnerFramework - the value should be the following:
       * mvnSurefire - For running JUnit/TestNG over Maven Surefire/Failsafe
-      * uft - For running Micro Focus UFT
-      * mbt - For running Micro Focus MBT
-      * cucumber_jvm - For running Cucumber-JVM over Maven
-      * bdd_scenario - For running BDD Scenario tests
-      * jbehave - For running JBehave over Maven
-      * protractor - For running tests using Protractor 
-      * gradle - For running tests using Gradle
+      
+   In the future multiple options will be added (for example: Cucumber/JVM, JBehave, UFT etc.).      
+
 3. In the created branch configure the pipeline `.gitlab-ci.yml` file to include the logic for running the tests received in the testsToRun variable.
 Example for `mvnSurefire`:
     ```
