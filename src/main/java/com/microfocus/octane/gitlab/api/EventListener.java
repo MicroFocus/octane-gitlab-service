@@ -6,6 +6,7 @@ import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.causes.CIEventCause;
 import com.hp.octane.integrations.dto.causes.CIEventCauseType;
 import com.hp.octane.integrations.dto.coverage.CoverageReportType;
+import com.hp.octane.integrations.dto.entities.EntityConstants;
 import com.hp.octane.integrations.dto.events.CIEvent;
 import com.hp.octane.integrations.dto.events.CIEventType;
 import com.hp.octane.integrations.dto.events.MultiBranchType;
@@ -49,6 +50,7 @@ public class EventListener {
     private static final DTOFactory dtoFactory = DTOFactory.getInstance();
     private final GitLabApi gitLabApi;
     private final ApplicationSettings applicationSettings;
+    private final Map<Integer, JSONArray> pipelineVariables = new HashMap<>();
 
     @Autowired
     public EventListener(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper, OctaneServices octaneServices) {
@@ -108,15 +110,16 @@ public class EventListener {
 
                     }
 
+                    int pipelineId = getPipelineId(event);
                     if(isPipelineEvent(event)){
-                        List<CIParameter> parametersList = new ArrayList<>();
-                        JSONArray variablesList = VariablesHelper.getVariablesListFromPipelineEvent(event);
+                        pipelineVariables.put(pipelineId, VariablesHelper.getVariablesListFromPipelineEvent(event));
                         //check if this parameter is in job level:
                         List<Variable> allVariables = VariablesHelper.getVariables(parsedPath,gitLabApi,applicationSettings.getConfig());
-
-                        variablesList.forEach(var -> {
-                            parametersList.add(VariablesHelper.convertVariableToParameter(var));
-                        });
+                    }
+                    
+                    if (isPipelineEvent(event) || (isBuildEvent(event) && eventType == CIEventType.STARTED)) {
+                        List<CIParameter> parametersList = new ArrayList<>();
+                        pipelineVariables.get(pipelineId).forEach(var -> parametersList.add(VariablesHelper.convertVariableToParameter(var)));
 
                         if(parametersList.size() >0) {
                             ciEvent.setParameters(parametersList);
@@ -126,6 +129,10 @@ public class EventListener {
                 OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(ciEvent));
             });
             if (eventType == CIEventType.FINISHED) {
+                if (isPipelineEvent(event)) {
+                    pipelineVariables.remove(getPipelineId(event));
+                }
+
                 Integer projectId = isPipelineEvent(event) ? event.getJSONObject("project").getInt("id") : event.getInt("project_id");
                 if (!isPipelineEvent(event)) {
                     Project project = gitLabApi.getProjectApi().getProject(projectId);
@@ -161,6 +168,15 @@ public class EventListener {
         }
         log.traceExit();
         return Response.ok().build();
+    }
+
+    private int getPipelineId(JSONObject event) {
+        if (isBuildEvent(event)) {
+            return event.getInt("pipeline_id");
+        } else if (isPipelineEvent(event)) {
+            return event.getJSONObject("object_attributes").getInt("id");
+        }
+        throw new RuntimeException("The pipeline id can only be extracted from pipeline and build events.");
     }
 
     private void sendCodeCoverage(Integer projectId, Project project, Job job) throws GitLabApiException, IOException {
@@ -580,6 +596,10 @@ public class EventListener {
 
     private boolean isPipelineEvent(JSONObject event) {
         return event.getString("object_kind").equals("pipeline");
+    }
+    
+    private boolean isBuildEvent (JSONObject event) {
+        return event.getString("object_kind").equals("build");
     }
 
     private boolean isMergeRequestEvent(JSONObject event) {

@@ -223,6 +223,7 @@ public class GitlabServices {
                                 .setJobCiId(parseProject.getJobCiId(true))
                                 .setName(project.getNameWithNamespace())
                                 .setDefaultBranchName(project.getDefaultBranch())
+                                .setParameters(getParameters(parseProject))
                                 .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
 
                         projectNames = projectNames + buildConf.getName()+",";
