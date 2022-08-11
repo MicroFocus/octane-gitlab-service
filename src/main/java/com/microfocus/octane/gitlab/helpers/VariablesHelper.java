@@ -80,7 +80,7 @@ public class VariablesHelper {
                         variables.addAll(variablesOnGroup);
                     }catch (GitLabApiException e){
                         if("root".equalsIgnoreCase(group)){
-                            log.warn("can not find variables for the group:" + group);
+                            if(log.isDebugEnabled()){log.warn("can not find variables for the group:" + group);}
                         }else {
                             log.error("can not find variables for the group:" + group);
                         }
@@ -120,8 +120,8 @@ public class VariablesHelper {
         try {
             variable = gitLabApi.getProjectApi().getVariable(projectId, variableName);
         } catch (GitLabApiException apiException) {
-            log.warn("Variable " + variableName + " could not be obtained for project with id " + projectId + ". " +
-                    apiException.getMessage());
+            if(log.isDebugEnabled()){log.warn("Variable " + variableName + " could not be obtained for project with id " + projectId + ". " +
+                    apiException.getMessage());}
         }
 
         return Optional.ofNullable(variable);
@@ -136,8 +136,8 @@ public class VariablesHelper {
                 List<Variable> variablesOnGroup = gitLabApi.getGroupApi().getVariables(group);
                 variablesOnGroup.forEach(variable -> variablesKeyValuePairs.put(variable.getKey(), variable.getValue()));
             } catch (GitLabApiException e) {
-                if("root".equalsIgnoreCase(group)){
-                    log.warn("can not find variables for the group:" + group);
+                if("root".equalsIgnoreCase(group) ){
+                    if (log.isDebugEnabled()) {log.warn("can not find variables for the group:" + group);}
                 }else {
                     log.error("can not find variables for the group:" + group);
                 }

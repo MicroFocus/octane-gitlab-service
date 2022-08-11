@@ -203,7 +203,7 @@ public class GitlabServices {
         }
     }
 
-    CIJobsList getJobList() {
+    CIJobsList getJobList(boolean includeParameters, Long workspaceId) {
         CIJobsList ciJobsList = dtoFactory.newDTO(CIJobsList.class);
         List<PipelineNode> list = new ArrayList<>();
         String projectNames ="";
@@ -223,9 +223,11 @@ public class GitlabServices {
                                 .setJobCiId(parseProject.getJobCiId(true))
                                 .setName(project.getNameWithNamespace())
                                 .setDefaultBranchName(project.getDefaultBranch())
-                                .setParameters(getParameters(parseProject))
                                 .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
 
+                        if(includeParameters){
+                            buildConf.setParameters(getParameters(parseProject));
+                        }
                         projectNames = projectNames + buildConf.getName()+",";
                         list.add(buildConf);
                     } catch (Exception e) {
