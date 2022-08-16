@@ -159,7 +159,7 @@ public class OctaneServices extends CIPluginServices {
     @Override
     public CIJobsList getJobsList(boolean includeParameters, Long workspaceId) {
         try {
-            CIJobsList jobList = gitlabServices.getJobList();
+            CIJobsList jobList = gitlabServices.getJobList(includeParameters,workspaceId);
             if (jobList.getJobs().length < 1) {
                 log.warn("IMPORTANT: The integration user has no project member permissions");
             }
