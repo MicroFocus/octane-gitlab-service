@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class VariablesHelper {
+public final class VariablesHelper {
 
     private static final Logger log = LogManager.getLogger(VariablesHelper.class);
     private static final String KEY = "key";
