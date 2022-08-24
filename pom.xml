@@ -289,7 +289,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
+<!--             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <configuration>
@@ -302,7 +302,7 @@
                         </manifest>
                     </archive>
                 </configuration>
-            </plugin>
+            </plugin> -->
             <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -321,6 +321,16 @@
                         </configuration>
                     </execution>
                 </executions>
+                <configuration>
+                   <archive>
+                       <manifest>
+                           <mainClass>com.microfocus.octane.gitlab.app.Application</mainClass>
+                           <addDefaultImplementationEntries>
+                               true
+                           </addDefaultImplementationEntries>
+                       </manifest>
+                   </archive>
+               </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
