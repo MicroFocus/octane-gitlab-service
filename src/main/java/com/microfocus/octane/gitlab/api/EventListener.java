@@ -226,7 +226,7 @@ public class EventListener {
             try (InputStream artifactsStream = gitLabApi.getJobApi()
                     .downloadArtifactsFile(projectId, job.getId())) {
                 List<Map.Entry<String, ByteArrayInputStream>> coverageResultFiles =
-                        TestResultsHelper.extractArtifacts(artifactsStream, coverageReportFilePattern);
+                        TestResultsHelper.extractArtifacts(artifactsStream, "glob:" + coverageReportFilePattern);
 
                 if (Objects.nonNull(coverageResultFiles) && coverageResultFiles.size() > 0) {
                     coverageResultFiles.forEach(
