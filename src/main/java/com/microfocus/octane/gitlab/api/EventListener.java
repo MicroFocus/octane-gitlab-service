@@ -6,16 +6,24 @@ import com.hp.octane.integrations.dto.DTOFactory;
 import com.hp.octane.integrations.dto.causes.CIEventCause;
 import com.hp.octane.integrations.dto.causes.CIEventCauseType;
 import com.hp.octane.integrations.dto.coverage.CoverageReportType;
-import com.hp.octane.integrations.dto.entities.EntityConstants;
 import com.hp.octane.integrations.dto.events.CIEvent;
 import com.hp.octane.integrations.dto.events.CIEventType;
 import com.hp.octane.integrations.dto.events.MultiBranchType;
 import com.hp.octane.integrations.dto.events.PhaseType;
 import com.hp.octane.integrations.dto.parameters.CIParameter;
-import com.hp.octane.integrations.dto.scm.*;
+import com.hp.octane.integrations.dto.scm.SCMChange;
+import com.hp.octane.integrations.dto.scm.SCMCommit;
+import com.hp.octane.integrations.dto.scm.SCMData;
+import com.hp.octane.integrations.dto.scm.SCMRepository;
+import com.hp.octane.integrations.dto.scm.SCMType;
 import com.hp.octane.integrations.dto.snapshots.CIBuildResult;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
-import com.microfocus.octane.gitlab.helpers.*;
+import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
+import com.microfocus.octane.gitlab.helpers.ParsedPath;
+import com.microfocus.octane.gitlab.helpers.PathType;
+import com.microfocus.octane.gitlab.helpers.PullRequestHelper;
+import com.microfocus.octane.gitlab.helpers.TestResultsHelper;
+import com.microfocus.octane.gitlab.helpers.VariablesHelper;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.MergeRequestEventType;
 import com.microfocus.octane.gitlab.services.OctaneServices;
@@ -25,22 +33,40 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
-import org.gitlab4j.api.models.*;
+import org.gitlab4j.api.models.Commit;
+import org.gitlab4j.api.models.CompareResults;
+import org.gitlab4j.api.models.Diff;
+import org.gitlab4j.api.models.Job;
+import org.gitlab4j.api.models.MergeRequest;
+import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.Variable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 @Component
 @Path("/events")
@@ -189,7 +215,7 @@ public class EventListener {
                 applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName())) {
             log.info("Variable for JaCoCo coverage report path not set. No coverage injection for this pipeline.");
         } else {
-            String coverageReportFilePath = coverageReportFilePathVar.isPresent()
+            String coverageReportFilePattern = coverageReportFilePathVar.isPresent()
                     ? coverageReportFilePathVar.get().getValue()
                     : projectGroupVariables.get(
                             applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
@@ -197,17 +223,20 @@ public class EventListener {
             String octaneJobId = project.getPathWithNamespace().toLowerCase() + "/" + job.getName();
             String octaneBuildId = job.getId().toString();
 
-            OctaneSDK.getClients().forEach(client -> {
-                try (InputStream codeCoverageReportFile = gitLabApi.getJobApi()
-                        .downloadSingleArtifactsFile(projectId, job.getId(),
-                                Paths.get(coverageReportFilePath))) {
-                    client.getCoverageService()
-                            .pushCoverage(octaneJobId, octaneBuildId, CoverageReportType.JACOCOXML,
-                                    codeCoverageReportFile);
-                } catch (GitLabApiException | IOException exception) {
-                    log.error(exception.getMessage());
+            try (InputStream artifactsStream = gitLabApi.getJobApi()
+                    .downloadArtifactsFile(projectId, job.getId())) {
+                List<Map.Entry<String, ByteArrayInputStream>> coverageResultFiles =
+                        TestResultsHelper.extractArtifacts(artifactsStream, "glob:" + coverageReportFilePattern);
+
+                if (Objects.nonNull(coverageResultFiles) && coverageResultFiles.size() > 0) {
+                    coverageResultFiles.forEach(
+                            coverageFile -> OctaneSDK.getClients().forEach(client -> client.getCoverageService()
+                                    .pushCoverage(octaneJobId, octaneBuildId, CoverageReportType.JACOCOXML,
+                                            coverageFile.getValue())));
                 }
-            });
+            } catch (GitLabApiException | IOException exception) {
+                log.error(exception.getMessage());
+            }
         }
     }
 
