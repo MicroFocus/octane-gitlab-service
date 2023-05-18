@@ -53,7 +53,7 @@ public class GherkinTestResultsProvider {
             File mqmTestResultsFile = TestResultsHelper.getMQMTestResultsFilePath(project.getId(),job.getId(),getTestResultRootFolder());
 
             try {
-                GherkinUtils.aggregateGherkinFilesToMqmResultFile(artifacts, mqmTestResultsFile, job.getName(), Integer.toString(job.getId()),null);
+                GherkinUtils.aggregateGherkinFilesToMqmResultFile(artifacts, mqmTestResultsFile, job.getName(), Long.toString(job.getId()),null);
                 TestResultsHelper.pushTestResultsKey(project,job);
                 log.info("Gherkin test results for: [project"+ project.getName()+", id:"+project.getId()+",job:"+ job.getName() + "] were saved to file successfully ");
 

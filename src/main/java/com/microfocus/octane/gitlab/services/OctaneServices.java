@@ -65,7 +65,7 @@ public class OctaneServices extends CIPluginServices {
     private final String TESTS_TO_RUN_PARAM_NAME = "testsToRun";
     private final String TEST_RUNNER_BRANCH_PARAM_NAME = "testRunnerBranch";
     private final String TEST_RUNNER_FRAMEWORK_PARAM_NAME = "testRunnerFramework";
-    private final Integer NO_SUCH_PIPELINE = -1;
+    private final long NO_SUCH_PIPELINE = -1;
 
     @Autowired
     public OctaneServices() throws TransformerConfigurationException {
@@ -338,7 +338,7 @@ public class OctaneServices extends CIPluginServices {
         TestsResult result = dtoFactory.newDTO(TestsResult.class);
         try {
             ParsedPath project = new ParsedPath(ParsedPath.cutLastPartOfPath(jobFullName), gitLabApi, PathType.PROJECT);
-            Job job = gitLabApi.getJobApi().getJob(project.getPathWithNameSpace(), Integer.parseInt(buildNumber));
+            Job job = gitLabApi.getJobApi().getJob(project.getPathWithNameSpace(), Long.parseLong(buildNumber));
 
             //report gherkin test results
 
@@ -421,7 +421,7 @@ public class OctaneServices extends CIPluginServices {
                     .findAny().orElse(null);
 
             if (octaneExecutionId != null) {
-                int pipelineIdWithParameter = getIdWhereParameter(parsedPath.getPathWithNameSpace(),
+                long pipelineIdWithParameter = getIdWhereParameter(parsedPath.getPathWithNameSpace(),
                         pipelines, octaneExecutionId);
 
                 gitLabApi.getPipelineApi().cancelPipelineJobs(parsedPath.getPathWithNameSpace(),
@@ -482,7 +482,7 @@ public class OctaneServices extends CIPluginServices {
         }
     }
 
-    private int getIdWhereParameter(String cleanedPath, List<Pipeline> pipelines, CIParameter executionId) {
+    private long getIdWhereParameter(String cleanedPath, List<Pipeline> pipelines, CIParameter executionId) {
         pipelines = pipelines.stream()
                 .filter(this::pipelineInQueue)
                 .collect(Collectors.toList());

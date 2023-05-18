@@ -8,10 +8,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
+import org.gitlab4j.api.models.AccessLevel;
 import org.gitlab4j.api.models.Commit;
 import org.gitlab4j.api.models.Diff;
 import org.gitlab4j.api.models.MergeRequest;
 import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.ProjectFilter;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
@@ -79,7 +81,8 @@ public class MergeRequestHistoryHandler {
 
     public void executeFirstScan() {
         try {
-            List<Project> gitLabProjects = gitLabApi.getProjectApi().getProjects().stream()
+            ProjectFilter filter = new ProjectFilter().withMembership(true).withMinAccessLevel(AccessLevel.MAINTAINER);
+            List<Project> gitLabProjects = gitLabApi.getProjectApi().getProjects(filter).stream()
                     .filter(project -> {
                         Map<String, String> projectGroupVariables =
                                 VariablesHelper.getProjectGroupVariables(gitLabApi, project);

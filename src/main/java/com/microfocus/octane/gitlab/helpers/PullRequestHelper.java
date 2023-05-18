@@ -44,7 +44,7 @@ public class PullRequestHelper {
                                                 SCMRepository targetScmRepository,
                                                 List<SCMCommit> mergeRequestCommits) {
         return DTOFactory.getInstance().newDTO(PullRequest.class)
-                .setId(Integer.toString(mergeRequest.getIid()))
+                .setId(Long.toString(mergeRequest.getIid()))
                 .setTitle(mergeRequest.getTitle())
                 .setDescription(mergeRequest.getDescription())
                 .setState(mergeRequest.getState())

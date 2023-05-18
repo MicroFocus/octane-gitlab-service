@@ -76,7 +76,7 @@ public class EventListener {
     private static final DTOFactory dtoFactory = DTOFactory.getInstance();
     private final GitLabApi gitLabApi;
     private final ApplicationSettings applicationSettings;
-    private final Map<Integer, JSONArray> pipelineVariables = new HashMap<>();
+    private final Map<Long, JSONArray> pipelineVariables = new HashMap<>();
 
     @Autowired
     public EventListener(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper, OctaneServices octaneServices) {
@@ -136,7 +136,7 @@ public class EventListener {
 
                     }
 
-                    int pipelineId = getPipelineId(event);
+                    long pipelineId = getPipelineId(event);
                     if(isPipelineEvent(event)){
                         pipelineVariables.put(pipelineId, VariablesHelper.getVariablesListFromPipelineEvent(event));
                         //check if this parameter is in job level:
@@ -159,10 +159,10 @@ public class EventListener {
                     pipelineVariables.remove(getPipelineId(event));
                 }
 
-                Integer projectId = isPipelineEvent(event) ? event.getJSONObject("project").getInt("id") : event.getInt("project_id");
+                long projectId = isPipelineEvent(event) ? event.getJSONObject("project").getLong("id") : event.getLong("project_id");
                 if (!isPipelineEvent(event)) {
                     Project project = gitLabApi.getProjectApi().getProject(projectId);
-                    Integer jobId = getEventTargetObjectId(event);
+                    long jobId = getEventTargetObjectId(event);
                     Job job = gitLabApi.getJobApi().getJob(projectId, jobId);
 
                     if(job.getArtifactsFile() != null) {
@@ -196,16 +196,16 @@ public class EventListener {
         return Response.ok().build();
     }
 
-    private int getPipelineId(JSONObject event) {
+    private long getPipelineId(JSONObject event) {
         if (isBuildEvent(event)) {
-            return event.getInt("pipeline_id");
+            return event.getLong("pipeline_id");
         } else if (isPipelineEvent(event)) {
-            return event.getJSONObject("object_attributes").getInt("id");
+            return event.getJSONObject("object_attributes").getLong("id");
         }
         throw new RuntimeException("The pipeline id can only be extracted from pipeline and build events.");
     }
 
-    private void sendCodeCoverage(Integer projectId, Project project, Job job) throws GitLabApiException, IOException {
+    private void sendCodeCoverage(long projectId, Project project, Job job) throws GitLabApiException, IOException {
         Optional<Variable> coverageReportFilePathVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                 applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
 
@@ -284,7 +284,7 @@ public class EventListener {
 
         String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
 
-        int mergeRequestId = getEventTargetObjectId(event);
+        long mergeRequestId = getEventTargetObjectId(event);
         MergeRequest mergeRequest = gitLabApi.getMergeRequestApi().getMergeRequest(project.getId(), mergeRequestId);
 
         List<Commit> mergeRequestCommits = gitLabApi.getMergeRequestApi().getCommits(project.getId(), mergeRequest.getIid());
@@ -308,7 +308,7 @@ public class EventListener {
     private List<CIEvent> getCIEvents(JSONObject event) {
         List<CIEvent> events = new ArrayList<>();
         CIEventType eventType = getEventType(event);
-        Integer buildCiId = getEventTargetObjectId(event);
+        long buildCiId = getEventTargetObjectId(event);
 
         Object duration = getDuration(event);
         Long startTime = getStartTime(event,duration);
@@ -328,8 +328,8 @@ public class EventListener {
         events.add(dtoFactory.newDTO(CIEvent.class)
                 .setProjectDisplayName(getCiDisplayName(event))
                 .setEventType(eventType)
-                .setBuildCiId(buildCiId.toString())
-                .setNumber(buildCiId.toString())
+                .setBuildCiId(Long.toString(buildCiId))
+                .setNumber(Long.toString(buildCiId))
                 .setProject(getCiFullName(event))
                 .setResult(eventType == CIEventType.STARTED || eventType == CIEventType.DELETED ? null : convertCiBuildResult(getStatus(event)))
                 .setStartTime(startTime)
@@ -344,7 +344,7 @@ public class EventListener {
             events.add(dtoFactory.newDTO(CIEvent.class)
                     .setProjectDisplayName(getCiDisplayName(event))
                     .setEventType(CIEventType.SCM)
-                    .setBuildCiId(buildCiId.toString())
+                    .setBuildCiId(Long.toString(buildCiId))
                     .setNumber(null)
                     .setProject(getCiFullName(event))
                     .setResult(null)
@@ -396,7 +396,7 @@ public class EventListener {
             CIEventCause cause = dtoFactory.newDTO(CIEventCause.class);
             cause.setType(CIEventCauseType.UPSTREAM);
             cause.setProject(getProjectCiId(event)); ///
-            cause.setBuildCiId(getRootId(event).toString());
+            cause.setBuildCiId(Long.toString(getRootId(event)));
             cause.getCauses().add(rootCause);
             causes.add(cause);
         }
@@ -500,13 +500,13 @@ public class EventListener {
         }
     }
 
-    private Integer getRootId(JSONObject event) {
-        return isPipelineEvent(event) ? event.getJSONObject("object_attributes").getInt("id") : event.getJSONObject("commit").getInt("id");
+    private long getRootId(JSONObject event) {
+        return isPipelineEvent(event) ? event.getJSONObject("object_attributes").getLong("id") : event.getJSONObject("commit").getLong("id");
     }
 
     private SCMData getScmData(JSONObject event) {
         try {
-            Integer projectId = event.getJSONObject("project").getInt("id");
+            long projectId = event.getJSONObject("project").getLong("id");
             String sha = event.getJSONObject("object_attributes").getString("sha");
             String beforeSha = event.getJSONObject("object_attributes").getString("before_sha");
             CompareResults results = gitLabApi.getRepositoryApi().compare(projectId, beforeSha, sha);
@@ -580,15 +580,15 @@ public class EventListener {
         }
     }
 
-    private Integer getEventTargetObjectId(JSONObject event) {
+    private long getEventTargetObjectId(JSONObject event) {
         if (isMergeRequestEvent(event)) {
-            return event.getJSONObject("object_attributes").getInt("iid");
+            return event.getJSONObject("object_attributes").getLong("iid");
         } else if (isPipelineEvent(event)) {
-            return event.getJSONObject("object_attributes").getInt("id");
+            return event.getJSONObject("object_attributes").getLong("id");
         } else if (isDeleteBranchEvent(event)) {
-            return event.getInt("project_id");
+            return event.getLong("project_id");
         } else {
-            return event.getInt("build_id");
+            return event.getLong("build_id");
         }
     }
 
