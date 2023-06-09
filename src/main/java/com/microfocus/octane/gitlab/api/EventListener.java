@@ -250,7 +250,7 @@ public class EventListener {
             return Response.ok().entity(warning).build();
         }
 
-        Project project = gitLabApi.getProjectApi().getProject(event.getJSONObject("project").getInt("id"));
+        Project project = gitLabApi.getProjectApi().getProject(event.getJSONObject("project").getLong("id"));
         Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project);
 
         Optional<Variable> publishMergeRequests = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
