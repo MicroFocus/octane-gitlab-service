@@ -115,7 +115,7 @@ public final class VariablesHelper {
         return variableList;
     }
 
-    public static Optional<Variable> getProjectVariable(GitLabApi gitLabApi, int projectId, String variableName) {
+    public static Optional<Variable> getProjectVariable(GitLabApi gitLabApi, long projectId, String variableName) {
         Variable variable = null;
         try {
             variable = gitLabApi.getProjectApi().getVariable(projectId, variableName);

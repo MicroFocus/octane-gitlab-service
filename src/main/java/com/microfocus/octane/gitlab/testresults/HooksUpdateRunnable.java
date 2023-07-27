@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
+import org.gitlab4j.api.models.AccessLevel;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectFilter;
 import org.gitlab4j.api.models.User;
@@ -22,7 +23,7 @@ public class HooksUpdateRunnable implements Runnable {
     GitLabApi gitLabApi;
     Date lastUpdateTime;
     private URL webhookURL;
-    private Integer lastUpdatedProjectId = 0;
+    private long lastUpdatedProjectId = 0;
     static final Logger log = LogManager.getLogger(HooksUpdateRunnable.class);
 
     public HooksUpdateRunnable(GitLabApiWrapper gitLabApiWrapper, URL webhookURL, User currentUser) {
@@ -44,9 +45,8 @@ public class HooksUpdateRunnable implements Runnable {
 
         try {
 
-            ProjectFilter filter = new ProjectFilter();
-            filter.withIdAfter(lastUpdatedProjectId);
-
+            ProjectFilter filter = new ProjectFilter().withIdAfter(lastUpdatedProjectId).withMembership(true)
+                    .withMinAccessLevel(AccessLevel.MAINTAINER);
             List<Project> projects = gitLabApi.getProjectApi().getProjects(filter);
 
             if (projects.size() > 0) {
@@ -61,11 +61,11 @@ public class HooksUpdateRunnable implements Runnable {
 
                 });
 
-                int maxId = projects.stream()
+                long maxId = projects.stream()
                         .max(Comparator.comparing(Project::getId))
                         .orElseThrow(NoSuchElementException::new).getId();
                 //update the index of the last updated project.
-                lastUpdatedProjectId = maxId > lastUpdatedProjectId ? maxId : lastUpdatedProjectId;
+                lastUpdatedProjectId = Math.max(maxId, lastUpdatedProjectId);
             }
 
         } catch (GitLabApiException e) {

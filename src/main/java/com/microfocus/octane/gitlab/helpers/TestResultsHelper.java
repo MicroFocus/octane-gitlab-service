@@ -26,7 +26,7 @@ public class TestResultsHelper {
         return Paths.get(rootFolder, testResultFolder).toFile();
     }
 
-    public static File getMQMTestResultsFilePath(Integer projectId, Integer jobId,String rootFolderPath) {
+    public static File getMQMTestResultsFilePath(long projectId, long jobId,String rootFolderPath) {
 
         if(rootFolderPath == null ){
             rootFolderPath ="";

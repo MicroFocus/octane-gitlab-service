@@ -23,7 +23,7 @@ public class ParsedPath {
     private String pathWithNameSpace;
     private List<Branch> branches;
     private String currentBranch;
-    private int id;
+    private long id;
     private GitLabApi gitlabApi;
     private static final Logger log = LogManager.getLogger(ParsedPath.class);
     private String nameWithNameSpaceForDisplayName;
@@ -162,7 +162,7 @@ public class ParsedPath {
         return branches;
     }
 
-    public int getId() {
+    public long getId() {
         if (project == null) {
             try {
                 this.project = gitlabApi.getProjectApi().getProject(this.getPathWithNameSpace());
