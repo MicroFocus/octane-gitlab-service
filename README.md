@@ -1,4 +1,4 @@
-![MICROFOCUS LOGO](https://upload.wikimedia.org/wikipedia/commons/4/4e/MicroFocus_logo_blue.png)
+![OPENTEXT LOGO](https://upload.wikimedia.org/wikipedia/commons/1/1b/OpenText_logo.svg)
 
 Project status: [![Build status](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)
 
@@ -36,7 +36,6 @@ _**Note that if the service is down or unavailable, the data will be lost and no
 The service uses the Octane [CI SDK](https://github.com/MicroFocus/octane-ci-java-sdk) for this.
 
 
-_**Note that this solution does not support GitLab on SaaS**_
 
 
 ## Installation and configuration instructions
@@ -297,7 +296,7 @@ As the Test Runner executes a pipeline on the GitLab side, a job entity will als
 Keep in mind that the Test Runner pipeline should only be executed using the Test Runner and not by manually running it from the Pipeline menu.
 
 More about ALM Octane Testing Framework here:
-https://admhelp.microfocus.com/octane/en/16.0.100-16.0.400/Online/Content/AdminGuide/how-setup-testing-integration.htm
+https://admhelp.microfocus.com/octane/en/latest/Online/Content/AdminGuide/how-setup-testing-integration.htm
 
 ## Cleanup webhooks
 
