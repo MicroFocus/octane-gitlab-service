@@ -171,16 +171,10 @@ public class EventListener {
                     sentRoots.add(pipelineId);
                 } else {
                     if (!sentRoots.contains(pipelineId)) {
-                        List<Pair<CIEvent, JSONObject>> temporary;
+                        List<Pair<CIEvent, JSONObject>> pipelineEvents = noRootEvents.containsKey(pipelineId) ? noRootEvents.get(pipelineId) : new ArrayList<>();
+                        pipelineEvents.add(new ImmutablePair<>(ciEvent, event));
 
-                        if (noRootEvents.containsKey(pipelineId)) {
-                            temporary = noRootEvents.get(pipelineId);
-                        } else {
-                            temporary = new ArrayList<>();
-                        }
-                        temporary.add(new ImmutablePair<>(ciEvent, event));
-
-                        noRootEvents.put(pipelineId, temporary);
+                        noRootEvents.put(pipelineId, pipelineEvents);
                     } else {
 
                         if (noRootEvents.containsKey(pipelineId)) {
@@ -188,7 +182,7 @@ public class EventListener {
                                         OctaneSDK.getClients().forEach(client ->
                                                 client.getEventsService().publishEvent(noRootEvent.getKey()));
                                         try {
-                                            if(getEventType(noRootEvent.getValue()) == CIEventType.FINISHED)
+                                            if (getEventType(noRootEvent.getValue()) == CIEventType.FINISHED)
                                                 warnings.add(checkForCoverage(noRootEvent.getValue()));
                                         } catch (Exception e) {
                                             log.warn("An error occurred while handling GitLab event", e);
@@ -200,9 +194,9 @@ public class EventListener {
 
                         OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(ciEvent));
 
-                        if(eventType == CIEventType.FINISHED) {
+                        if (eventType == CIEventType.FINISHED) {
                             warnings.add(checkForCoverage(event));
-                            if(isPipelineEvent(event))
+                            if (isPipelineEvent(event))
                                 sentRoots.remove(pipelineId);
                         }
                     }
@@ -368,8 +362,6 @@ public class EventListener {
     }
 
     private CIEvent getScmEvent(JSONObject event) {
-
-
         long buildCiId = getEventTargetObjectId(event);
         SCMData scmData = getScmData(event);
         boolean isScmNull = scmData == null;
