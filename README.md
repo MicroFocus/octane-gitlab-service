@@ -1,6 +1,6 @@
 ![OPENTEXT LOGO](https://upload.wikimedia.org/wikipedia/commons/1/1b/OpenText_logo.svg)
 
-Project status: [![Build status](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)
+[![Build status](https://ci.appveyor.com/api/projects/status/github/MicroFocus/octane-gitlab-service?branch=master&svg=true)](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)
 
 ## Relevant links
 
