@@ -58,6 +58,8 @@ import com.microfocus.octane.gitlab.model.MergeRequestEventType;
 import com.microfocus.octane.gitlab.services.OctaneServices;
 import com.microfocus.octane.gitlab.testresults.GherkinTestResultsProvider;
 import com.microfocus.octane.gitlab.testresults.JunitTestResultsProvider;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gitlab4j.api.GitLabApi;
@@ -80,6 +82,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
+import javax.xml.transform.TransformerConfigurationException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -89,6 +92,8 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -106,6 +111,8 @@ public class EventListener {
     private final GitLabApi gitLabApi;
     private final ApplicationSettings applicationSettings;
     private final Map<Long, JSONArray> pipelineVariables = new HashMap<>();
+    private final List<Long> sentRoots = new ArrayList<>();
+    private final Map<Long, List<Pair<CIEvent, JSONObject>>> noRootEvents = new HashMap<>();
 
     @Autowired
     public EventListener(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper, OctaneServices octaneServices) {
@@ -134,95 +141,144 @@ public class EventListener {
                 return handleMergeRequestEvent(event);
             }
 
+            List<String> warnings = new ArrayList<>();
             CIEventType eventType = getEventType(event);
-            if (eventType == CIEventType.UNDEFINED || eventType == CIEventType.QUEUED) return Response.ok().build();
+            if (eventType == CIEventType.UNDEFINED || eventType == CIEventType.QUEUED) {
+                return Response.ok().build();
+            }
 
-            List<CIEvent> eventList = getCIEvents(event);
-            eventList.forEach(ciEvent -> {
-                if (ciEvent.getResult() == null) {
-                    ciEvent.setResult(CIBuildResult.UNAVAILABLE);
+            CIEvent ciEvent = getCIEvent(event);
+
+            if (ciEvent.getResult() == null) {
+                ciEvent.setResult(CIBuildResult.UNAVAILABLE);
+            }
+
+            try {
+                log.trace(new ObjectMapper().writeValueAsString(ciEvent));
+            } catch (Exception e) {
+                log.debug("Failed to trace an incoming event", e);
+            }
+
+            if (eventType == CIEventType.FINISHED || eventType == CIEventType.STARTED) {
+                if (ciEvent.getProject().endsWith("/build")) {
+                    ciEvent.setSkipValidation(true);
                 }
-                try {
-                    log.trace(new ObjectMapper().writeValueAsString(ciEvent));
-                } catch (Exception e) {
-                    log.debug("Failed to trace an incoming event", e);
+
+                if (ciEvent.getProject().contains(ParsedPath.PIPELINE_JOB_CI_ID_PREFIX)) {
+                    ParsedPath parsedPath = new ParsedPath(ciEvent.getProject(), gitLabApi, PathType.PIPELINE);
+
+                    String projectDisplayName = parsedPath.getNameWithNameSpaceForDisplayName() != null ?
+                            parsedPath.getNameWithNameSpaceForDisplayName() : parsedPath.getFullPathOfProjectWithBranch();
+
+                    ciEvent.setProjectDisplayName(projectDisplayName + "/" + parsedPath.getCurrentBranch());
+                    ciEvent.setParentCiId(parsedPath.getJobCiId(true)).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
                 }
-                if (eventType == CIEventType.FINISHED || eventType == CIEventType.STARTED) {
-                    ParsedPath parsedPath =null;
-                    if (ciEvent.getProject().endsWith("/build")) {
-                        parsedPath = new ParsedPath(ciEvent.getProject().substring(0, ciEvent.getProject().length() - 6), gitLabApi, PathType.PROJECT);
-                        ciEvent.setSkipValidation(true);
 
-                    }
-                    if (ciEvent.getProject().contains(ParsedPath.PIPELINE_JOB_CI_ID_PREFIX)) {
-                        parsedPath = new ParsedPath(ciEvent.getProject(), gitLabApi, PathType.PIPELINE);
+                long pipelineId = getPipelineId(event);
 
-                        String projectDisplayName = parsedPath.getNameWithNameSpaceForDisplayName() !=null?
-                                parsedPath.getNameWithNameSpaceForDisplayName() :parsedPath.getFullPathOfProjectWithBranch();
+                if (isPipelineEvent(event)) {
+                    pipelineVariables.put(pipelineId, VariablesHelper.getVariablesListFromPipelineEvent(event));
+                }
 
-                        ciEvent.setProjectDisplayName(projectDisplayName+ "/"+ parsedPath.getCurrentBranch());
-                        ciEvent.setParentCiId(parsedPath.getJobCiId(true)).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
-
-                    }
-
-                    long pipelineId = getPipelineId(event);
-                    if(isPipelineEvent(event)){
-                        pipelineVariables.put(pipelineId, VariablesHelper.getVariablesListFromPipelineEvent(event));
-                        //check if this parameter is in job level:
-                        List<Variable> allVariables = VariablesHelper.getVariables(parsedPath,gitLabApi,applicationSettings.getConfig());
-                    }
-                    
-                    if (isPipelineEvent(event) || (isBuildEvent(event) && eventType == CIEventType.STARTED)) {
-                        List<CIParameter> parametersList = new ArrayList<>();
+                if (isPipelineEvent(event) || (isBuildEvent(event) && eventType == CIEventType.STARTED)) {
+                    List<CIParameter> parametersList = new ArrayList<>();
+                    if (pipelineVariables.get(pipelineId) != null)
                         pipelineVariables.get(pipelineId).forEach(var -> parametersList.add(VariablesHelper.convertVariableToParameter(var)));
 
-                        if(parametersList.size() >0) {
-                            ciEvent.setParameters(parametersList);
-                        }
+                    if (parametersList.size() > 0) {
+                        ciEvent.setParameters(parametersList);
                     }
                 }
-                OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(ciEvent));
-            });
-            if (eventType == CIEventType.FINISHED) {
-                if (isPipelineEvent(event)) {
-                    pipelineVariables.remove(getPipelineId(event));
-                }
 
-                long projectId = isPipelineEvent(event) ? event.getJSONObject("project").getLong("id") : event.getLong("project_id");
-                if (!isPipelineEvent(event)) {
-                    Project project = gitLabApi.getProjectApi().getProject(projectId);
-                    long jobId = getEventTargetObjectId(event);
-                    Job job = gitLabApi.getJobApi().getJob(projectId, jobId);
+                if (isPipelineEvent(event) && eventType == CIEventType.STARTED) {
+                    OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(ciEvent));
 
-                    if(job.getArtifactsFile() != null) {
+                    CIEvent scmEvent = getScmEvent(event);
+                    if (scmEvent != null)
+                        OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(scmEvent));
 
-                        sendCodeCoverage(projectId, project, job);
+                    sentRoots.add(pipelineId);
+                } else {
+                    if (!sentRoots.contains(pipelineId)) {
+                        List<Pair<CIEvent, JSONObject>> pipelineEvents = noRootEvents.containsKey(pipelineId) ? noRootEvents.get(pipelineId) : new ArrayList<>();
+                        pipelineEvents.add(new ImmutablePair<>(ciEvent, event));
 
-                        GherkinTestResultsProvider gherkinTestResultsProvider = GherkinTestResultsProvider.getInstance(applicationSettings);
-                        boolean isGherkinTestsExist =
-                                gherkinTestResultsProvider.createTestList(project,job,gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+                        noRootEvents.put(pipelineId, pipelineEvents);
+                    } else {
 
-                        //looking for Regular tests
-                        if(!isGherkinTestsExist) {
-                            JunitTestResultsProvider testResultsProduce =  JunitTestResultsProvider.getInstance(applicationSettings);
-                            boolean testResultsExist = testResultsProduce.createTestList(project,job,
-                                    gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+                        if (noRootEvents.containsKey(pipelineId)) {
+                            noRootEvents.get(pipelineId).forEach(noRootEvent -> {
+                                        OctaneSDK.getClients().forEach(client ->
+                                                client.getEventsService().publishEvent(noRootEvent.getKey()));
+                                        try {
+                                            if (getEventType(noRootEvent.getValue()) == CIEventType.FINISHED)
+                                                warnings.add(checkForCoverage(noRootEvent.getValue()));
+                                        } catch (Exception e) {
+                                            log.warn("An error occurred while handling GitLab event", e);
+                                        }
+                                    }
+                            );
+                            noRootEvents.remove(pipelineId);
+                        }
 
-                            if(!testResultsExist) {
-                                String warning = String.format("No test results found by using the %s pattern",
-                                        applicationSettings.getConfig().getGitlabTestResultsFilePattern());
-                                log.warn(warning);
-                                return Response.ok().entity(warning).build();
-                            }
+                        OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(ciEvent));
+
+                        if (eventType == CIEventType.FINISHED) {
+                            warnings.add(checkForCoverage(event));
+                            if (isPipelineEvent(event))
+                                sentRoots.remove(pipelineId);
                         }
                     }
                 }
             }
+
+            warnings.removeAll(Collections.singletonList(""));
+            if (!warnings.isEmpty())
+                return Response.ok().entity(warnings).build();
         } catch (Exception e) {
             log.warn("An error occurred while handling GitLab event", e);
         }
         log.traceExit();
         return Response.ok().build();
+    }
+
+
+    private String checkForCoverage(JSONObject event) throws GitLabApiException, IOException, TransformerConfigurationException {
+
+        if (isPipelineEvent(event)) {
+            pipelineVariables.remove(getPipelineId(event));
+        }
+
+        if (!isPipelineEvent(event)) {
+            long projectId = event.getLong("project_id");
+            Project project = gitLabApi.getProjectApi().getProject(projectId);
+            long jobId = getEventTargetObjectId(event);
+            Job job = gitLabApi.getJobApi().getJob(projectId, jobId);
+
+            if (job.getArtifactsFile() != null) {
+
+                sendCodeCoverage(projectId, project, job);
+
+                GherkinTestResultsProvider gherkinTestResultsProvider = GherkinTestResultsProvider.getInstance(applicationSettings);
+                boolean isGherkinTestsExist =
+                        gherkinTestResultsProvider.createTestList(project, job, gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+
+                //looking for Regular tests
+                if (!isGherkinTestsExist) {
+                    JunitTestResultsProvider testResultsProduce = JunitTestResultsProvider.getInstance(applicationSettings);
+                    boolean testResultsExist = testResultsProduce.createTestList(project, job,
+                            gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+
+                    if (!testResultsExist) {
+                        String warning = String.format("No test results found by using the %s pattern",
+                                applicationSettings.getConfig().getGitlabTestResultsFilePattern());
+                        log.warn(warning);
+                        return warning;
+                    }
+                }
+            }
+        }
+        return "";
     }
 
     private long getPipelineId(JSONObject event) {
@@ -247,7 +303,7 @@ public class EventListener {
             String coverageReportFilePattern = coverageReportFilePathVar.isPresent()
                     ? coverageReportFilePathVar.get().getValue()
                     : projectGroupVariables.get(
-                            applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
+                    applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
 
             String octaneJobId = project.getPathWithNamespace().toLowerCase() + "/" + job.getName();
             String octaneBuildId = job.getId().toString();
@@ -334,27 +390,44 @@ public class EventListener {
         return Response.ok().build();
     }
 
-    private List<CIEvent> getCIEvents(JSONObject event) {
-        List<CIEvent> events = new ArrayList<>();
+    private CIEvent getScmEvent(JSONObject event) {
+        long buildCiId = getEventTargetObjectId(event);
+        SCMData scmData = getScmData(event);
+        boolean isScmNull = scmData == null;
+
+        return !isScmNull ? dtoFactory.newDTO(CIEvent.class)
+                .setProjectDisplayName(getCiDisplayName(event))
+                .setEventType(CIEventType.SCM)
+                .setBuildCiId(Long.toString(buildCiId))
+                .setNumber(null)
+                .setProject(getCiFullName(event))
+                .setResult(null)
+                .setStartTime(null)
+                .setEstimatedDuration(null)
+                .setDuration(null)
+                .setScmData(scmData)
+                .setCauses(getCauses(event, false))
+                .setPhaseType(null) :
+                null;
+    }
+
+
+    private CIEvent getCIEvent(JSONObject event) {
         CIEventType eventType = getEventType(event);
         long buildCiId = getEventTargetObjectId(event);
 
         Object duration = getDuration(event);
-        Long startTime = getStartTime(event,duration);
+        Long startTime = getStartTime(event, duration);
 
-        SCMData scmData = null;
         boolean isScmNull = true;
         if (isPipelineEvent(event)) {
-            if (eventType == CIEventType.STARTED) {
-                scmData = getScmData(event);
-                isScmNull = scmData == null;
-            } else {
+            if (eventType != CIEventType.STARTED) {
                 String GITLAB_BLANK_SHA = "0000000000000000000000000000000000000000";
                 isScmNull = event.getJSONObject("object_attributes").getString("before_sha").equals(GITLAB_BLANK_SHA);
             }
         }
 
-        events.add(dtoFactory.newDTO(CIEvent.class)
+        return dtoFactory.newDTO(CIEvent.class)
                 .setProjectDisplayName(getCiDisplayName(event))
                 .setEventType(eventType)
                 .setBuildCiId(Long.toString(buildCiId))
@@ -363,52 +436,32 @@ public class EventListener {
                 .setResult(eventType == CIEventType.STARTED || eventType == CIEventType.DELETED ? null : convertCiBuildResult(getStatus(event)))
                 .setStartTime(startTime)
                 .setEstimatedDuration(null)
-                .setDuration(calculateDuration(eventType,duration))
+                .setDuration(calculateDuration(eventType, duration))
                 .setScmData(null)
                 .setCauses(getCauses(event, isScmNull))
-                .setPhaseType(isPipelineEvent(event) ? PhaseType.POST : PhaseType.INTERNAL)
-        );
-
-        if (scmData != null) {
-            events.add(dtoFactory.newDTO(CIEvent.class)
-                    .setProjectDisplayName(getCiDisplayName(event))
-                    .setEventType(CIEventType.SCM)
-                    .setBuildCiId(Long.toString(buildCiId))
-                    .setNumber(null)
-                    .setProject(getCiFullName(event))
-                    .setResult(null)
-                    .setStartTime(null)
-                    .setEstimatedDuration(null)
-                    .setDuration(null)
-                    .setScmData(scmData)
-                    .setCauses(getCauses(event, false))
-                    .setPhaseType(null)
-            );
-        }
-
-        return events;
+                .setPhaseType(isPipelineEvent(event) ? PhaseType.POST : PhaseType.INTERNAL);
     }
 
     private Long calculateDuration(CIEventType eventType, Object duration) {
-        if(eventType == CIEventType.STARTED || Objects.equals( duration, null)) return 0L;
+        if (eventType == CIEventType.STARTED || Objects.equals(duration, null)) return 0L;
 
-        if(duration instanceof Double) return Math.round(1000* (Double) duration);
-        if(duration instanceof BigDecimal) return Long.valueOf(Math.round(1000* ((BigDecimal) duration).intValue()));
+        if (duration instanceof Double) return Math.round(1000 * (Double) duration);
+        if (duration instanceof BigDecimal) return Long.valueOf(Math.round(1000 * ((BigDecimal) duration).intValue()));
 
         return Long.valueOf(Math.round(1000 * (Integer) duration));
 
-       // return Math.round(duration instanceof Double ? 1000* (Double) duration : 1000 * (Integer) duration);
+        // return Math.round(duration instanceof Double ? 1000* (Double) duration : 1000 * (Integer) duration);
 
     }
 
     private Long getStartTime(JSONObject event, Object duration) {
         Long startTime = getTime(event, "started_at");
-        if (startTime == null){
-           try {
-               startTime = getTime(event, "finished_at") - Long.parseLong(duration.toString());
-           }catch (Exception e){
-               startTime = getTime(event, "created_at");
-           }
+        if (startTime == null) {
+            try {
+                startTime = getTime(event, "finished_at") - Long.parseLong(duration.toString());
+            } catch (Exception e) {
+                startTime = getTime(event, "created_at");
+            }
         }
         return startTime;
     }
@@ -463,7 +516,7 @@ public class EventListener {
     }
 
     private String getStatus(JSONObject event) {
-        if  (isMergeRequestEvent(event)) {
+        if (isMergeRequestEvent(event)) {
             return event.getJSONObject("object_attributes").getString("action");
         } else if (isPipelineEvent(event)) {
             return event.getJSONObject("object_attributes").getString("status");
@@ -499,15 +552,15 @@ public class EventListener {
         return getProjectFullPath(event) + "/" + event.getString("build_name");
     }
 
-    private String getConvertedBranchName(JSONObject event){
+    private String getConvertedBranchName(JSONObject event) {
         return ParsedPath.convertBranchName(getBranchName(event));
     }
 
-    private String getBranchName(JSONObject event){
-        if(isPipelineEvent(event)){
+    private String getBranchName(JSONObject event) {
+        if (isPipelineEvent(event)) {
             return event.getJSONObject("object_attributes").getString("ref");
-        } else if(isDeleteBranchEvent(event)){
-            String ref =event.getString("ref");
+        } else if (isDeleteBranchEvent(event)) {
+            String ref = event.getString("ref");
             return ref.substring("refs/heads/".length());
         }
         return event.getString("ref");
@@ -624,12 +677,18 @@ public class EventListener {
     private MergeRequestEventType getMREventType(JSONObject event) {
         String mergeRequestEventStatus = getStatus(event);
         switch (mergeRequestEventStatus) {
-            case "open": return MergeRequestEventType.OPEN;
-            case "update": return MergeRequestEventType.UPDATE;
-            case "close": return MergeRequestEventType.CLOSE;
-            case "reopen": return MergeRequestEventType.REOPEN;
-            case "merge": return MergeRequestEventType.MERGE;
-            default: return MergeRequestEventType.UNKNOWN;
+            case "open":
+                return MergeRequestEventType.OPEN;
+            case "update":
+                return MergeRequestEventType.UPDATE;
+            case "close":
+                return MergeRequestEventType.CLOSE;
+            case "reopen":
+                return MergeRequestEventType.REOPEN;
+            case "merge":
+                return MergeRequestEventType.MERGE;
+            default:
+                return MergeRequestEventType.UNKNOWN;
         }
     }
 
@@ -655,8 +714,8 @@ public class EventListener {
     private boolean isPipelineEvent(JSONObject event) {
         return event.getString("object_kind").equals("pipeline");
     }
-    
-    private boolean isBuildEvent (JSONObject event) {
+
+    private boolean isBuildEvent(JSONObject event) {
         return event.getString("object_kind").equals("build");
     }
 
