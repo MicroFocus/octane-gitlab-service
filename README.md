@@ -1,6 +1,6 @@
-![MICROFOCUS LOGO](https://upload.wikimedia.org/wikipedia/commons/4/4e/MicroFocus_logo_blue.png)
+![OPENTEXT LOGO](https://upload.wikimedia.org/wikipedia/commons/1/1b/OpenText_logo.svg)
 
-Project status: [![Build status](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)
+[![Build status](https://ci.appveyor.com/api/projects/status/github/MicroFocus/octane-gitlab-service?branch=master&svg=true)](https://ci.appveyor.com/project/OctaneCIPlugins/octane-gitlab-service)
 
 ## Relevant links
 
@@ -36,7 +36,6 @@ _**Note that if the service is down or unavailable, the data will be lost and no
 The service uses the Octane [CI SDK](https://github.com/MicroFocus/octane-ci-java-sdk) for this.
 
 
-_**Note that this solution does not support GitLab on SaaS**_
 
 
 ## Installation and configuration instructions
@@ -135,7 +134,7 @@ Example:
 
     http://myGitLabServer.myCompany.com:30080
 ##### gitlab.personalAccessToken
-A personal access token for a particular user in GitLab. This is a sensitive token. See the 'Password Encryption' section below.
+A personal access token for a particular user in GitLab, the user should have MANTAINER rights and the scopes of the token should be read/write over API and read over repository. This is a sensitive token. See the 'Password Encryption' section below.
 ##### gitlab.testResultsFilePattern
 A 'glob:pattern' or 'regex:pattern' pattern for finding the test result files inside GitLab job artifact ZIP.
 For complete documentation about the applicable patterns see [java.nio.file.FileSystem::getPathMatcher](https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileSystem.html#getPathMatcher-java.lang.String-)
@@ -297,7 +296,7 @@ As the Test Runner executes a pipeline on the GitLab side, a job entity will als
 Keep in mind that the Test Runner pipeline should only be executed using the Test Runner and not by manually running it from the Pipeline menu.
 
 More about ALM Octane Testing Framework here:
-https://admhelp.microfocus.com/octane/en/16.0.100-16.0.400/Online/Content/AdminGuide/how-setup-testing-integration.htm
+https://admhelp.microfocus.com/octane/en/latest/Online/Content/AdminGuide/how-setup-testing-integration.htm
 
 ## Cleanup webhooks
 
