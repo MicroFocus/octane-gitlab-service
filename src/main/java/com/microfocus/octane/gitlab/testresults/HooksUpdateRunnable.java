@@ -75,7 +75,7 @@ public class HooksUpdateRunnable implements Runnable {
         try {
 
             ProjectFilter filter = new ProjectFilter().withIdAfter(lastUpdatedProjectId).withMembership(true)
-                    .withMinAccessLevel(AccessLevel.MAINTAINER);
+                    .withMinAccessLevel(AccessLevel.DEVELOPER);
             List<Project> projects = gitLabApi.getProjectApi().getProjects(filter);
 
             if (projects.size() > 0) {
