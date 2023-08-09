@@ -33,17 +33,17 @@ _**Note that if the service is down or unavailable, the data will be lost and no
 
 ##### Communication with Octane:
 
-The service uses the Octane [CI SDK](https://github.com/MicroFocus/octane-ci-java-sdk) for this.
+The service makes use of the Octane [CI SDK](https://github.com/MicroFocus/octane-ci-java-sdk) for sending CI events to ALM Octane (pipeline started/job started/SCM data etc.).
 
 
 
 
 ## Installation and configuration instructions
 
-1. Create a new directory to serve as the installation target. This can be on any machine that can access GitLab. (If GitLab is behind a firewall, this machine must also be behind it.)
+1. Create a new directory to serve as the installation target, hosted on any machine that can access GitLab. (If GitLab is behind a firewall, this machine must also be behind it.)
 2. Download the octane-gitlab-service-\<version\>.jar file from the release assets and copy it to the target directory.
 3. In ALM Octane, create an API access Client ID and Client secret with the CI/CD Integration role.
-4. In GitLab, create a personal access token for a particular user.
+4. In GitLab, create a personal access token with read/write over API and read over repository scopes for the integration user. The integration user should have a MAINTAINER role inside the projects/groups which you want to integrate in ALM Octane.
 5. In the target directory create a new application.properties file. Populate it with the following properties, and modify the placeholders with the appropriate values.
 ```application.properties
 # Jetty oriented properties
@@ -51,7 +51,7 @@ The service uses the Octane [CI SDK](https://github.com/MicroFocus/octane-ci-jav
 server.port=9091
 
 
-# ALM Octane GitLab Service oriented properties
+# ALM Octane GitLab Service-oriented properties
 # =========================================
 server.baseUrl=<mandatory: the base URL of this service, should be accessible by GitLab>
 server.webhook.route.url=<optional: URL of the service that can be exposed and is reachable from GitLab>
@@ -96,19 +96,19 @@ java –jar octane-gitlab-service-<version>.jar
 The TCP port for this service to listen on.
 
 ##### server.baseUrl
-The base URL of this service, should be accessible by GitLab.
+The base URL of this service should be accessible by GitLab.
 
 Example:
 
     http://myServiceServer.myCompany.com:9091
 
 ##### server.webhook.route.url
-If GitLab is in another network and can't access <server.baseUrl>\events, put here the accessible URL
+If GitLab is in another network and can't access <server.baseUrl>\events, insert here the accessible URL
 and route this **<server-based URL>\events** to **<server-based URL>\events**.
 
 ##### ciserver.identity
-The identity of the GitLab server in the ALM Octane server. By default a hash value generated from the service URL is used.
-Overriding this property is useful for preserving the CI server identity while migrating GitLab to another location.
+The identity of the GitLab server in the ALM Octane server. By default, a hash value generated from the service URL is used.
+Overriding this property is helpful in preserving the CI server identity while migrating GitLab to another location.
 
 ##### octane.location
 The URL of the ALM Octane server, using its fully qualified domain name (FQDN).
@@ -129,12 +129,12 @@ The API access Client ID that the plugin should use to connect to ALM Octane.
 ##### octane.apiClientSecret
 The API Client secret that the plugin should use to connect to ALM Octane. This is a sensitive token. See the 'Password Encryption' section below.
 ##### gitlab.location
-The base URL of the GitLab server.
+The base URL of GitLab.
 Example:
 
     http://myGitLabServer.myCompany.com:30080
 ##### gitlab.personalAccessToken
-A personal access token for a particular user in GitLab, the user should be a member of the projects/group with MAINTAINER rights and the scopes of the token should be read/write over API and read over repository. This is a sensitive token. See the 'Password Encryption' section below.
+A personal access token for a particular user in GitLab, the user should be a member of the projects/group with MAINTAINER rights, and the scopes of the token should be read/write over API and read over repository. This is a sensitive token. See the 'Password Encryption' section below.
 ##### gitlab.testResultsFilePattern
 A 'glob:pattern' or 'regex:pattern' pattern for finding the test result files inside GitLab job artifact ZIP.
 For complete documentation about the applicable patterns see [java.nio.file.FileSystem::getPathMatcher](https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileSystem.html#getPathMatcher-java.lang.String-)
@@ -144,19 +144,17 @@ Example (any XML file recursively):
      glob:**.xml
 
 ##### gitlab.gherkinTestResultsFilePattern #####  
-same as testResultsFilePattern property, but for Gherkin test results.
+Same as testResultsFilePattern property, but for Gherkin test results.
 
 ##### gitlab.testResultsOutputFolderPath #####
-Path to directory in GitLab service machine.  
-The service will saved test results (of Gherkin) under this path till it will be sent to Octane. 
+Path to directory in GitLab service machine, where Gherkin test results will be stored until sent to Octane. 
 After one hour the files will be deleted. 
     
 ##### gitlab.variables.pipeline.usage
-This property is optional.   
 By default, the service report to ALM Octane includes all of the project's variables.  
-These variables will be present in the Pipeline module and the user can set a new value and run it from ALM Octane.
+These variables will be present in the Pipeline module and the user can set new values for them and run the pipeline from ALM Octane.
 
-To also see the groups or instance variables, add it to the property’s value.
+To also see the groups or instance variables, add them to the property’s value.
 Example:   
        
 * Variables from project: gitlab.variables.pipeline.usage=project   
@@ -166,39 +164,37 @@ Example:
 * Variables from group only: gitlab.variables.pipeline.usage=groups
 
 ##### gitlab.ci.service.can.run.pipeline
-This property is optional.
-By default, When defining the pipeline in ALM Octane, the user is also able to run it from ALM Octane.
-In some cases, the user should have the ability to add and view the pipeline, but should not have the ability to run it.
-When running the pipeline is not allowed- this parameter should be set to 'false'. 
+By default, the user can also run pipelines from ALM Octane.
+When ALM Octane users are not allowed to trigger the pipeline, the parameter should be set to 'false'. 
 
 ##### gitlab.mergeRequests.variables.publishMergeRequestVarName
-The name of the gitlab defined variable that specifies if merge requests should be sent to Octane or not for the project
-the variable is defined in.
+The name of the GitLab variable that specifies if merge requests should be sent to Octane or not for the project where
+the variable is defined.
 
-The values must be boolean values (true of false).
+The values must be boolean (true or false).
 
 If the variable is not defined in Gitlab or if it is set to anything but true then merge requests will not be sent to 
 Octane for the current project.
 
 ##### gitlab.mergeRequests.variables.destinationWorkspaceVarName
-The name of the gitlab defined variable that specifies the destination workspace id for the sent pull requests.
+The name of the GitLab variable that specifies the destination workspace id for the merge requests.
 
-If the project has merge request sending set to true (the publishMergeRequest variable), but does not have this variable
+If the project has merge request sending set to true (the publishMergeRequest variable) but does not have this variable
 defined or if the workspace id specified does not exist an error will be thrown.
 
-Rule of thumb: Where publishMergeRequest variable is set to true destinationWorkspace variable must also be configured 
+Rule of thumb: Where publishMergeRequest variable is set to true, destinationWorkspace variable must also be configured 
 in order for the tool to work correctly.
 
 ##### gitlab.mergeRequests.variables.useSSHFormatVarName
-The name of the gitlab defined variable that specifies which url of the repo should be used for cloning.
+The name of the GitLab variable that specifies which URL of the repository should be used for cloning.
 
-The values must be boolean values (true of false).
+The values must be boolean (true or false).
 
-If the value is set to true the ssh url will be used. Otherwise, if the value is not true or if the variable is not 
-defined at all for the project, then the http url will be used by default.
+If the value is set to true, the ssh URL will be used. Otherwise, if the value is not true or if the variable is not 
+defined at all for the project, then the HTTP URL will be used by default.
 
 #### gitlab.codeCoverage.variables.generatedCoverageReportFilePathVarName
-The name of the gitlab defined variable that specifies the path to the generated coverage report file by the pipeline job.
+The name of the GitLab variable that specifies the path to the generated coverage report file by the pipeline job.
 
 This path should be the one that is configured in the pipeline coverage goal step.
 
@@ -209,12 +205,11 @@ The path to a folder where merge request history fetching statuses should be kep
 
 If the folder does not exist, then it will be created automatically.
 
-In this folder an empty file for each of the projects will be created (the name of the file will be the id of each 
+In this folder, an empty file for each of the projects will be created (the name of the file will be the id of each 
 project). The meaning of the files is the following: if a file named with an id of a project exists, it means that merge 
 request history has been fetched for that project.
 
-The tool consistently listens for changes in the directory and if one file for a specific project is deleted, than the 
-tool will automatically fetch the merge request history for that project and create the file again.
+The tool consistently listens for changes in the directory and if one file for a specific project is deleted, then it will automatically fetch the merge request history for that project and recreate the file.
 
 ## Configuring variables in Gitlab
 
@@ -232,29 +227,29 @@ gitlab.variables.useSSHFormatVarName).
 
 1. Create a new GitLab CI server entity in ALM Octane.
 2. Go to the Pipelines module.
-3. Create a new pipeline from the new GitLab CI server.
-4. Note that the list only shows pipelines that are owned by the user whose API access was used.
+3. Create a pipeline using the newly created GitLab CI server.
+4. The list only displays pipelines in which the integration user has a MAINTAINER role.
 5. Run the pipeline and wait for the run to finish.
-6. Look at the result – statuses, topology, build entries, test entries.
-7. If you modify anything in the code, a new build is automatically triggered.
-8. Look at the results again, and pay attention to the “Commits” area.
+6. Look at the result – statuses, topology, build entries, and test entries.
 
 ## Integration with ALM Octane Test Framework
 
-The ALM Octane Test Framework allows running of separate automated tests from ALM Octane using Test Runners.
+The ALM Octane Test Framework allows the running of separate automated tests from ALM Octane using Test Runners.
 
 ### How to configure a Test Runner in GitLab
 
-1. On your current repository (the one containing the code and the tests) create a new branch which will hold the test runner pipeline.
+1. On your current repository (the one containing the code and the tests) create a new branch that will hold the test runner pipeline.
+
 2. Configure the following 3 variables on the project level:
-   1. testsToRun - the value does not matter. The integration will use this variable to populate the tests to run with the ones selected in ALM Octane.
+   1. testsToRun - the value does not matter. The integration will populate this variable with the selected tests in ALM Octane.
    2. testRunnerBranch - the value will be the name of the branch created earlier, which holds the test runner pipeline.
    3. testRunnerFramework - the value should be the following:
       * mvnSurefire - For running JUnit/TestNG over Maven Surefire/Failsafe
+      * uft - For running UFT-One tests using FTToolsLauncher
       
-   In the future multiple options will be added (for example: Cucumber/JVM, JBehave, UFT etc.).      
+   In the future multiple options will be added (for example Cucumber/JVM, JBehave, etc.).      
 
-3. In the created branch configure the pipeline `.gitlab-ci.yml` file to include the logic for running the tests received in the testsToRun variable.
+3. In the created branch configure the `.gitlab-ci.yml` file to include the logic for running the tests received in the testsToRun variable.
 Example for `mvnSurefire`:
     ```
    image: maven:3.3.9-jdk-8
@@ -279,17 +274,17 @@ Example for `mvnSurefire`:
 1. Go to `Spaces`>`Devops`>`Test Runners`
 2. Create a new Test Runner with a name of your choosing
 3. Select the GitLab Integration CI Server
-4. For the Job select the one that contains the Test Runner created on GitLab
+4. For the job, select the one that contains the Test Runner created on GitLab
 
-The Job dropdown will only contain jobs that have the `testsToRun` variable configured (that is how ALM Octane knows that the pipeline represents a Test Runner).
+The job dropdown will only contain jobs that have the `testsToRun` variable configured (that is how ALM Octane knows that the pipeline represents a Test Runner).
 
 ### How to run Automated Tests using a Test Runner in ALM Octane
 
-1. Run a pipeline job which runs all the tests in order to inject them in ALM Octane as Automated Tests.
-2. Create a Test Suite which includes the tests that you want to run.
-3. Inside the Test Suite assign the Test Runner (Test Runner field) to the tests.
+1. Run a pipeline job that runs all the tests in order to inject them in ALM Octane as Automated Tests.
+2. Create a Test Suite that includes the tests that you want to run.
+3. Inside the Test Suite assign the Test Runner field to the tests.
 5. Plan the Test Suite.
-6. Go to the planned Suite Run, select the desired Tests and hit the `Run` button.
+6. Go to the planned Suite Run, select the desired Tests, and hit the `Run` button.
 7. The Test Runner will run the selected tests.
 
 As the Test Runner executes a pipeline on the GitLab side, a job entity will also be created in ALM Octane which can be viewed in the Pipeline Section.
@@ -327,22 +322,22 @@ However, password encryption is optional. You can enter the password plain value
 ## SSL port
 [How to configure the service with SSL port ](https://mkyong.com/spring-boot/spring-boot-ssl-https-examples/)  
 
-
 ## Troubleshooting
 
 ### Multi-Branch 
 
-If you create a pipeline with one branch, and then add branches, ALM Octane will not reflect this change.  
-In this case, delete the original pipeline and create a new one for the multibranch plan.
-### Can not see the project in the job list of Octane
+If you create a pipeline with one branch, and then add more branches, ALM Octane will not reflect this change.  
+In this case, delete the original pipeline and create a new one for the multi-branch plan.
+
+### Cannot see the project in the job list of Octane
 
 The project must contain files and not be empty. Make sure there is at least one branch in your GitLab project.
 
 ### GitLab WebHooks
 
 If you can run the pipeline from Octane but cannot see progress and results:  
-Check the webhook from your project in GitLab (in GitLab go to: your project  settings  integration  test the webhooks for your service url: <service Url>\events)  
-If necessary, update the application.properties file with the correct server.baseurl value
+Check the webhook from your project in GitLab (in GitLab go to your `Project`>`Settings`>`Integration` and test the webhooks for your service URL: <service Url>\events).
+If necessary, update the application.properties file with the correct server.baseurl value.
 
 
 ### Endpoint not accessible by GitLab
@@ -352,8 +347,8 @@ If you are getting this error:
 GitlabServices: Error while accessing the '<service-url>/events' endpoint.  
 Note that this endpoint must be accessible by GitLab.
 ```
-In the service we are running a test for the webhook URL, to see if can access to this endpoint.
-If this endpoint is not accessible please check your application.properties file.
+In the service we are running a test for the webhook URL, to see if the endpoint is accessible.
+If it is not accessible, please check your application.properties file.
 In case this URL is not accessible from GitLab (for example if GitLab is in a different network),  
 you can use the “server.webhook.route.url” property to fix your environment.
  
@@ -361,7 +356,7 @@ you can use the “server.webhook.route.url” property to fix your environment.
 ### GitLab Runner HTTP(S) proxy
 
 GitLab uses registered runners for running pipelines. Runners are registered as described in this article: https://docs.gitlab.com/runner/register/.
-If a runner communicates with this integration service over a network that requires HTTP(S) proxy settings, an easy way to set the proxy is to add it to the runner’s registration entry.
+If a runner communicates with the integration service over a network that requires HTTP(S) proxy settings, an easy way to set the proxy is to add it to the runner’s registration entry.
 
 For example, after registering a runner on a Linux machine, its registration entry resides in the /etc/gitlab-runner/config.toml file. (Tip: If you can’t find this file, run the ‘gitlab-runner list’ shell command – it displays the registration file location as ConfigFile=…). This entry may look as below:
 
@@ -437,14 +432,13 @@ Below is an example of a Log4J 2 XML configuration:
 
 If the GitLab server and the octane-gitlab-service app both run on the same network, you need to enable "Allow requests to the local network from hooks and services" as follows:
 - Open the [your_gitlab_server]/admin/application_settings page.
-- In the “Outbound requests” section, check the "Allow requests to the local network from hooks and services" checkbox.
+- In the `Outbound requests` section, check the `Allow requests to the local network from hooks and services` checkbox.
 
 ### SSL error 
 
 If getting the following error in the log:
 "javax.net.ssl.SSLHandshakeException: sun.security.validator.ValidatorException: PKIX path building failed:   
 sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target"
-- in case the service run with open-jdk please try to run with official java (from Oracle site)
 - try to install the certificate manually:  
 example from customer process: 
 ```
