@@ -134,7 +134,7 @@ Example:
 
     http://myGitLabServer.myCompany.com:30080
 ##### gitlab.personalAccessToken
-A personal access token for a particular user in GitLab, the user should be a member of the projects/group with DEVELOPER rights and the scopes of the token should be read/write over API and read over repository. This is a sensitive token. See the 'Password Encryption' section below.
+A personal access token for a particular user in GitLab, the user should be a member of the projects/group with MAINTAINER rights and the scopes of the token should be read/write over API and read over repository. This is a sensitive token. See the 'Password Encryption' section below.
 ##### gitlab.testResultsFilePattern
 A 'glob:pattern' or 'regex:pattern' pattern for finding the test result files inside GitLab job artifact ZIP.
 For complete documentation about the applicable patterns see [java.nio.file.FileSystem::getPathMatcher](https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileSystem.html#getPathMatcher-java.lang.String-)
