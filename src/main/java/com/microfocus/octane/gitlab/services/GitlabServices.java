@@ -210,7 +210,7 @@ public class GitlabServices {
         String projectNames ="";
         try {
             ProjectFilter filter = new ProjectFilter();
-            filter.withMembership(true).withMinAccessLevel(AccessLevel.DEVELOPER);
+            filter.withMembership(true).withMinAccessLevel(AccessLevel.MAINTAINER);
             List<Project> projectsFilters = gitLabApi.getProjectApi().getProjects(filter);
             log.info("There are only "+ projectsFilters.size() +" projects with access level => MAINTAINER for the integrated user");
 
