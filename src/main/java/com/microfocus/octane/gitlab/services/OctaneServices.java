@@ -94,6 +94,7 @@ public class OctaneServices extends CIPluginServices {
     private final String TESTS_TO_RUN_PARAM_NAME = "testsToRun";
     private final String TEST_RUNNER_BRANCH_PARAM_NAME = "testRunnerBranch";
     private final String TEST_RUNNER_FRAMEWORK_PARAM_NAME = "testRunnerFramework";
+    private final String TEST_RUNNER_CUSTOM_PATTERN = "testRunnerCustomPattern";
     private final long NO_SUCH_PIPELINE = -1;
 
     @Autowired
@@ -285,8 +286,12 @@ public class OctaneServices extends CIPluginServices {
                 .filter(param -> param.getName().equalsIgnoreCase(TEST_RUNNER_FRAMEWORK_PARAM_NAME))
                 .map(this::getStringValueFromParam).findFirst();
 
+        Optional<String> customFormat = getPipeline(jobCiId).getParameters().stream()
+                .filter(param -> param.getName().equalsIgnoreCase(TEST_RUNNER_CUSTOM_PATTERN))
+                .map(this::getStringValueFromParam).findFirst();
+
         frameworkParam.ifPresentOrElse(framework -> {
-            String convertedTestsToRun = getConvertedTestsToRun(testsToRun, framework);
+            String convertedTestsToRun = getConvertedTestsToRun(testsToRun, framework, customFormat);
 
             resultedParams.addAll(parameters.stream().peek(parameter -> {
                 if (parameter.getName().equals(TESTS_TO_RUN_PARAM_NAME)) {
@@ -298,7 +303,6 @@ public class OctaneServices extends CIPluginServices {
             log.error(ex.getMessage(), ex);
             throw ex;
         });
-
         return resultedParams;
     }
 
@@ -315,7 +319,7 @@ public class OctaneServices extends CIPluginServices {
                 : parameter.getDefaultValue().toString();
     }
 
-    private String getConvertedTestsToRun(String testsToRun, String framework) {
+    private String getConvertedTestsToRun(String testsToRun, String framework, Optional<String> customFormat) {
         TestsToRunFramework frameworkToUse;
         try {
             frameworkToUse = TestsToRunFramework.fromValue(framework);
@@ -324,8 +328,16 @@ public class OctaneServices extends CIPluginServices {
             log.error(ex.getMessage(), ex);
             throw ex;
         }
-
         TestsToRunConverter converter = TestsToRunConvertersFactory.createConverter(frameworkToUse);
+
+        if(frameworkToUse.equals(TestsToRunFramework.Custom)){
+            customFormat.ifPresentOrElse(converter::setFormat,() -> {
+                RuntimeException ex = new RuntimeException("Framework parameter is set to 'custom', but no custom pattern was provided");
+                log.error(ex.getMessage(), ex);
+                throw ex;
+            });
+
+        }
 
         TestsToRunConverterResult result = converter.convert(testsToRun, "", null);
         return result.getConvertedTestsString();
