@@ -1,11 +1,11 @@
 ### Structure of the testRunnerCustomPattern json
 
-Only two keys are required in the json:
+Only two keys are required in the JSON:
 1. testPattern 
-   * the value will be a combination of the following three fields form the Automated Test : `Package`, `Class name`, `Name`
-   * it represents the structure of the tests form the `testsToRun` parameter
+   * the value will be a combination of the following three fields from the Automated Test: `Package`, `Class name`, `Name`
+   * It represents the structure of the tests from the `testsToRun` parameter
 2. testDelimiter 
-   * a delimiter character or set of characters for the tests form the testsToRun parameter
+   * a delimiter character or set of characters for the tests from the testsToRun parameter
 
 #### Simple Example: 
 We have a framework that will generate a Junit report with the following structure:
@@ -26,25 +26,25 @@ When Injected in ALM Octane will create the following three Automated Tests:
 
 Our framework supports the next format for executing multiple tests `myframework package:classname#test, ...`, so we need to convert our data from the fields to be sent via the `testsToRun` parameter with the correct format.
 
-In this case the json value for the `testRunnerCustomPattern` parameter:
+In this case the JSON value for the `testRunnerCustomPattern` parameter:
 
         {
             "testPattern": "$package:$class#$testName",
             "testDelimiter": ", "
         }
 
-* `"testPattern": "$package:$class#$testName"` - will map our fields form the Automated Test (`Package`, `Class name`, `Name`) to the accepted format of the framework `package:classname#test`.
+* `"testPattern": "$package:$class#$testName"` - will map our fields from the Automated Test (`Package`, `Class name`, `Name`) to the accepted format of the framework `package:classname#test`.
 * `"testDelimiter": ", "` - will separate each test with a comma.
 
 The value for the `$testsToRun` parameter (when all the Automated Tests are selected to run in the Suite Run) will be `className1#test1, className1#test2, className2#test3`. (Package will be ignored since is empty)
 
 The following optional keys are allowed as well:
 1. suffix/prefix
-    * the value is a character or a set of character that will be added at the beginning/end of the `testsToRun` parameter.
-    * it can be used to add new option in the command call for the chosen framework
+    * the value is a character or a set of characters that will be added at the beginning/end of the `testsToRun` parameter.
+    * it can be used to add a new option in the command call for the chosen framework
 2. replacements
-   * the value is a list of json containing a replacement object
-   * it can be used to replace/modify the string values of the fields form the Automated Test (`Package`, `Class name`, `Name`)
+   * the value is a list of JSON containing a replacement object
+   * it can be used to replace/modify the string values of the fields from the Automated Test (`Package`, `Class name`, `Name`)
    * the replacement objects are of the following types: 
      1. `replaceString` - will replace every occurrence of a given `string` with a `replacement` in the `target` (`$package` and or `$class` and or `testName`)
             
@@ -64,7 +64,7 @@ The following optional keys are allowed as well:
                "replacement": "<repacementString>"
             }
 
-     3. `replaceRegexFirst` - will replace first occurrence of a given `regex` with a `replacement` in the `target` (`$package` and or `$class` and or `testName`)
+     3. `replaceRegexFirst` - will replace the first occurrence of a given `regex` with a `replacement` in the `target` (`$package` and or `$class` and or `testName`)
 
             {
                "type": "replaceRegexFirst",
@@ -73,19 +73,19 @@ The following optional keys are allowed as well:
                "replacement": "<repacementString>"
             }
      
-     4. `notLatinAndDigitToOctal` - convert every non latin or digit character to its octal representation in the `target` (`$package` and or `$class` and or `testName`)
+     4. `notLatinAndDigitToOctal` - convert every non-latin or digit character to its octal representation in the `target` (`$package` and or `$class` and or `testName`)
 
             {
                "type": "notLatinAndDigitToOctal",
                "target": "$package|$class|$testName"
             }
      
-     5. `joinString` - will add a `sufix` and or a `prefix` to the `target` (`$package` and or `$class` and or `testName`)
+     5. `joinString` - will add a `suffix` and or a `prefix` to the `target` (`$package` and or `$class` and or `testName`)
 
             {
                "type": "joinString",
                "target": "$package|$class|$testName"
-               "sufix": "<sufixToAdd>"
+               "suffix": "<sufixToAdd>"
                "prefix": "<prefixToAdd>"
             }
      
@@ -96,7 +96,7 @@ The following optional keys are allowed as well:
                "target": "$package|$class|$testName"
             }
 
-     7. `toLowerCase` - will convert the `target` (`$package` and or `$class` and or `testName`) to lower case
+     7. `toLowerCase` - will convert the `target` (`$package` and or `$class` and or `testName`) to lowercase
 
             {
                "type": "toLowerCase",
@@ -124,7 +124,7 @@ Our framework requires :
 * the delimitation for the absolute path is \ character.
 * the format should be `myframework package:path\file.mytest:class#testName`
 
-In this case the json value for the `testRunnerCustomPattern` parameter:
+In this case the JSON value for the `testRunnerCustomPattern` parameter:
 
         {
             "testPattern": "$package:$class#$testName",
@@ -146,4 +146,4 @@ In this case the json value for the `testRunnerCustomPattern` parameter:
 
 * the `replaceString` replacement object will substitute each `.` character with \
 * the `replaceRegex` will replace the last \ with `.mytest`
-!Note: Each escape character in the Json should be doubled. 
+!Note: Each escape character in the JSON should be doubled. 
