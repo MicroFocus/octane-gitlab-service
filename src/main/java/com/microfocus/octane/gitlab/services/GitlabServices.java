@@ -249,9 +249,9 @@ public class GitlabServices {
         return ciJobsList;
     }
 
-    private Boolean isCurrentUserAdmin() throws GitLabApiException {
+    /*private Boolean isCurrentUserAdmin() throws GitLabApiException {
         return gitLabApi.getUserApi().getCurrentUser().getIsAdmin() != null && gitLabApi.getUserApi().getCurrentUser().getIsAdmin();
-    }
+    }*/
 
     PipelineNode createStructure(String buildId, boolean isMultiBranchParent) {
 

@@ -113,7 +113,7 @@ public class GitLabApiWrapper {
         return gitLabApi;
     }
 
-    public boolean isUserHasPermissionForProject(Project project,User currentUser) {
+    /* public boolean isUserHasPermissionForProject(Project project,User currentUser) {
         try {
             Optional<Member> currentMember = gitLabApi.getProjectApi().getAllMembers(project.getId())
                     .stream().filter(member -> member.getId().equals(currentUser.getId())).findFirst();
@@ -128,6 +128,6 @@ public class GitLabApiWrapper {
             log.error("failed to get user permissions" + e.getMessage());
         }
         return false;
-    }
+    }*/
 
 }
