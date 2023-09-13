@@ -106,19 +106,21 @@ public class GitlabServices {
         gitLabApi = gitLabApiWrapper.getGitLabApi();
 
         try {
-            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
-            User currentUser = gitLabApi.getUserApi().getCurrentUser();
+            ProjectFilter filter = new ProjectFilter().withMembership(true)
+                    .withMinAccessLevel(AccessLevel.MAINTAINER);
+
+            List<Project> projects =  gitLabApi.getProjectApi().getProjects(filter);
 
             if(cleanupOnly){
                 log.info("start with cleanup process");
-                HooksHelper.deleteWebHooks(projects,webhookURL,gitLabApiWrapper,gitLabApi,currentUser);
+                HooksHelper.deleteWebHooks(projects,webhookURL,gitLabApi);
             }else {
 
                 //start hooks' update thread
                 updateHooksExecutor =
                         Executors.newSingleThreadScheduledExecutor();
                 updateHooksScheduledFuture = updateHooksExecutor.scheduleAtFixedRate(
-                        new HooksUpdateRunnable(gitLabApiWrapper,webhookURL,currentUser),0 , HooksUpdateRunnable.INTERVAL, TimeUnit.MINUTES);
+                        new HooksUpdateRunnable(gitLabApiWrapper,webhookURL),0 , HooksUpdateRunnable.INTERVAL, TimeUnit.MINUTES);
 
             }
         } catch (GitLabApiException e) {
@@ -150,9 +152,11 @@ public class GitlabServices {
 
             log.info("Destroying GitLab webhooks ...");
 
-            List<Project> projects = isCurrentUserAdmin() ? gitLabApi.getProjectApi().getProjects() : gitLabApi.getProjectApi().getMemberProjects();
-            User currentUser = gitLabApi.getUserApi().getCurrentUser();
-            HooksHelper.deleteWebHooks(projects,webhookURL,gitLabApiWrapper,gitLabApi,currentUser);
+            ProjectFilter filter = new ProjectFilter().withMembership(true)
+                    .withMinAccessLevel(AccessLevel.MAINTAINER);
+
+            List<Project> projects = gitLabApi.getProjectApi().getProjects(filter);
+            HooksHelper.deleteWebHooks(projects,webhookURL,gitLabApi);
 
         } catch (Exception e) {
             log.warn("Failed to destroy GitLab webhooks", e);

@@ -106,12 +106,15 @@ public final class VariablesHelper {
                 for(String group :groupsFullPath){
                     try {
                         List<Variable> variablesOnGroup = gitLabApi.getGroupApi().getVariables(group);
+                        if(variablesOnGroup.isEmpty()){
+                            if (log.isDebugEnabled()) {
+                                log.warn("can not find variables for the group:" + group);
+                            }
+                        }
                         variables.addAll(variablesOnGroup);
                     }catch (GitLabApiException e){
-                        if("root".equalsIgnoreCase(group)){
-                            if(log.isDebugEnabled()){log.warn("can not find variables for the group:" + group);}
-                        }else {
-                            log.error("can not find variables for the group:" + group);
+                        if (log.isDebugEnabled()) {
+                            log.warn("can not find variables for the group:" + group);
                         }
                     }
                 }
@@ -156,23 +159,27 @@ public final class VariablesHelper {
         return Optional.ofNullable(variable);
     }
 
-    public static Map<String, String> getProjectGroupVariables(GitLabApi gitLabApi, Project project) {
+    public static Map<String, String> getProjectGroupVariables(GitLabApi gitLabApi, Project project, ConfigStructure appConfig) {
         Map<String, String> variablesKeyValuePairs = new HashMap<>();
 
-        List<String> groupsFullPath = ParsedPath.getGroupFullPathFromProject(project.getPathWithNamespace());
-        groupsFullPath.forEach(group -> {
-            try {
-                List<Variable> variablesOnGroup = gitLabApi.getGroupApi().getVariables(group);
-                variablesOnGroup.forEach(variable -> variablesKeyValuePairs.put(variable.getKey(), variable.getValue()));
-            } catch (GitLabApiException e) {
-                if("root".equalsIgnoreCase(group) ){
-                    if (log.isDebugEnabled()) {log.warn("can not find variables for the group:" + group);}
-                }else {
-                    log.error("can not find variables for the group:" + group);
+        if(appConfig.getGitlabVariablesPipelineUsage().contains(VARS_ON_GROUPS)) {
+            List<String> groupsFullPath = ParsedPath.getGroupFullPathFromProject(project.getPathWithNamespace());
+            groupsFullPath.forEach(group -> {
+                try {
+                    List<Variable> variablesOnGroup = gitLabApi.getGroupApi().getVariables(group);
+                    if(variablesOnGroup.isEmpty()){
+                        if (log.isDebugEnabled()) {
+                            log.warn("can not find variables for the group:" + group);
+                        }
+                    }
+                    variablesOnGroup.forEach(variable -> variablesKeyValuePairs.put(variable.getKey(), variable.getValue()));
+                } catch (GitLabApiException e) {
+                        if (log.isDebugEnabled()) {
+                            log.warn("can not find variables for the group:" + group);
+                        }
                 }
-            }
-        });
-
+            });
+        }
         return variablesKeyValuePairs;
     }
 }
