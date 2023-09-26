@@ -293,7 +293,7 @@ public class EventListener {
         Optional<Variable> coverageReportFilePathVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                 applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
 
-        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project);
+        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project, applicationSettings.getConfig());
 
         if (coverageReportFilePathVar.isEmpty() && !projectGroupVariables.containsKey(
                 applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName())) {
@@ -335,7 +335,7 @@ public class EventListener {
         }
 
         Project project = gitLabApi.getProjectApi().getProject(event.getJSONObject("project").getLong("id"));
-        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project);
+        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project, applicationSettings.getConfig());
 
         Optional<Variable> publishMergeRequests = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                 config.getPublishMergeRequestsVariableName());

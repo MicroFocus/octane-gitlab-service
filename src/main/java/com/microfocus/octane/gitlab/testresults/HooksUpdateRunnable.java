@@ -47,21 +47,17 @@ import java.util.*;
 public class HooksUpdateRunnable implements Runnable {
 
     static public final int INTERVAL = 60;
-    private final GitLabApiWrapper gitLabApiWrapper;
-    private final User currentUser;
     GitLabApi gitLabApi;
     Date lastUpdateTime;
     private URL webhookURL;
     private long lastUpdatedProjectId = 0;
     static final Logger log = LogManager.getLogger(HooksUpdateRunnable.class);
 
-    public HooksUpdateRunnable(GitLabApiWrapper gitLabApiWrapper, URL webhookURL, User currentUser) {
+    public HooksUpdateRunnable(GitLabApiWrapper gitLabApiWrapper, URL webhookURL) {
 
         this.gitLabApi = gitLabApiWrapper.getGitLabApi();
-        this.gitLabApiWrapper = gitLabApiWrapper;
         this.lastUpdateTime = new Date(System.currentTimeMillis());
         this.webhookURL = webhookURL;
-        this.currentUser = currentUser;
     }
 
     /*
@@ -81,9 +77,7 @@ public class HooksUpdateRunnable implements Runnable {
             if (projects.size() > 0) {
                 projects.stream().forEach(project -> {
                     try {
-                        if (gitLabApiWrapper.isUserHasPermissionForProject(project, currentUser)) {
-                            HooksHelper.addWebHookToProject(gitLabApi, webhookURL, project.getId(), true);
-                        }
+                        HooksHelper.addWebHookToProject(gitLabApi, webhookURL, project.getId(), true);
                     } catch (GitLabApiException e) {
                         log.warn("Failed to create GitLab web hooks", e);
                     }

@@ -68,11 +68,9 @@ public final class HooksHelper {
     }
 
 
-    public static void deleteWebHooks(List<Project> projects,URL webhookURL,GitLabApiWrapper gitLabApiWrapper,GitLabApi gitLabApi, User currentUser) throws GitLabApiException {
+    public static void deleteWebHooks(List<Project> projects,URL webhookURL,GitLabApi gitLabApi) throws GitLabApiException {
         for (Project project : projects) {
-            if (gitLabApiWrapper.isUserHasPermissionForProject(project, currentUser)) {
-                HooksHelper.deleteWebHooks(gitLabApi,webhookURL,project.getId());
-            }
+            HooksHelper.deleteWebHooks(gitLabApi,webhookURL,project.getId());
         }
     }
     public static void deleteWebHooks(GitLabApi gitLabApi,URL webhookURL, Object projectIdOrPath) throws GitLabApiException {

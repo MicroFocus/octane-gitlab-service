@@ -114,7 +114,7 @@ public class MergeRequestHistoryHandler {
             List<Project> gitLabProjects = gitLabApi.getProjectApi().getProjects(filter).stream()
                     .filter(project -> {
                         Map<String, String> projectGroupVariables =
-                                VariablesHelper.getProjectGroupVariables(gitLabApi, project);
+                                VariablesHelper.getProjectGroupVariables(gitLabApi, project, applicationSettings.getConfig());
 
                         Optional<Variable> shouldPublishToOctane =
                                 VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
@@ -174,7 +174,7 @@ public class MergeRequestHistoryHandler {
     private void sendMergeRequestsToOctane(Project project) throws GitLabApiException {
         log.info("Sending merge request history for project with id " + project.getId() + " to Octane.");
         List<MergeRequest> mergeRequests = gitLabApi.getMergeRequestApi().getMergeRequests(project.getId());
-        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project);
+        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project, applicationSettings.getConfig());
 
         Optional<Variable> destinationWSVar =
                 VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
