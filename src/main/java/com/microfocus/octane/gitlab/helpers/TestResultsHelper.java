@@ -103,15 +103,14 @@ public class TestResultsHelper {
 
                 if (matcher.matches(Paths.get(entry.getName()))) {
                     ByteArrayOutputStream entryStream = new ByteArrayOutputStream();
-
                     try (InputStream zipEntryStream = zipFile.getInputStream(entry)) {
                         StreamHelper.copyStream(zipEntryStream, entryStream);
                     }
 
                     File tempResultFile = File.createTempFile(entry.getName(),".xml");
-                    FileOutputStream f = null;//new FileOutputStream(entry.getName());
-                    IOUtils.copy(new ByteArrayInputStream(entryStream.toByteArray()), tempResultFile);
-
+                    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(entryStream.toByteArray());
+                    String s = entryStream.toString(EncodingHelper.detectCharset(byteArrayInputStream));
+                    IOUtils.copy(new ByteArrayInputStream(s.getBytes()), tempResultFile);
                     result.add(tempResultFile);
                 }
             }
@@ -153,8 +152,9 @@ public class TestResultsHelper {
                     try (InputStream zipEntryStream = zipFile.getInputStream(entry)) {
                         StreamHelper.copyStream(zipEntryStream, entryStream);
                     }
-
-                    result.add(Pair.of(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
+                    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(entryStream.toByteArray());
+                    String s = entryStream.toString(EncodingHelper.detectCharset(byteArrayInputStream));
+                    result.add(Pair.of(entry.getName(), new ByteArrayInputStream(s.getBytes())));
                 }
             }
             return result;
