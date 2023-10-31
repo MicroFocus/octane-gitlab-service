@@ -39,6 +39,7 @@ import org.gitlab4j.api.models.Job;
 import org.gitlab4j.api.models.Project;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
@@ -109,7 +110,8 @@ public class TestResultsHelper {
 
                     File tempResultFile = File.createTempFile(entry.getName(),".xml");
                     ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(entryStream.toByteArray());
-                    String s = entryStream.toString(EncodingHelper.detectCharset(byteArrayInputStream));
+                    String encoding = EncodingHelper.detectCharset(byteArrayInputStream);
+                    String s = entryStream.toString(encoding == null ? StandardCharsets.UTF_8.name() : encoding);
                     IOUtils.copy(new ByteArrayInputStream(s.getBytes()), tempResultFile);
                     result.add(tempResultFile);
                 }
@@ -153,7 +155,8 @@ public class TestResultsHelper {
                         StreamHelper.copyStream(zipEntryStream, entryStream);
                     }
                     ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(entryStream.toByteArray());
-                    String s = entryStream.toString(EncodingHelper.detectCharset(byteArrayInputStream));
+                    String encoding = EncodingHelper.detectCharset(byteArrayInputStream);
+                    String s = entryStream.toString(encoding == null ? StandardCharsets.UTF_8.name() : encoding);
                     result.add(Pair.of(entry.getName(), new ByteArrayInputStream(s.getBytes())));
                 }
             }

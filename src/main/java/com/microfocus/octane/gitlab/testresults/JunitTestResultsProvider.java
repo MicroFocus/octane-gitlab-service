@@ -49,14 +49,17 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -167,7 +170,7 @@ public class JunitTestResultsProvider {
         TestRunResult testResultStatus;
         if (tc.getSkipped() != null && tc.getSkipped().trim().length() > 0) {
             testResultStatus = TestRunResult.SKIPPED;
-        } else if (tc.getFailure().size() > 0) {
+        } else if (tc.getFailure().size() > 0 || tc.getError().size() > 0) {
             testResultStatus = TestRunResult.FAILED;
         } else {
             testResultStatus = TestRunResult.PASSED;
