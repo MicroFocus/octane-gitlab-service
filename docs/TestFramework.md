@@ -3,20 +3,21 @@
 1. On your current repository (the one containing the code and the tests) create a new branch that will hold the test runner pipeline.
 
 2. Configure the following variables on the project level:
+    #### Mandatory Variables for test runner configuration
     1. testsToRun - the value does not matter. The integration will populate this variable with the selected tests from ALM Octane.
     2. testRunnerBranch - the value will be the name of the branch created earlier, which holds the test runner pipeline.
     3. testRunnerFramework - the value should be the following:
         * mvnSurefire - For running JUnit/TestNG over Maven Surefire/Failsafe
         * uft - For running UFT-One tests using FTToolsLauncher
-        * custom - For running tests using a custom Framework that can generate Junit results (see our examples [here](CustomTestFrameworkExample.md))
-      
-   #### Optional Variables:
+        * custom - For running tests using a custom Framework that can generate Junit results (see our examples [here](CustomTestFrameworkExample.md))```
+
+    #### Optional Variables
     4. testRunnerCustomPattern - an optional parameter required only if the Framework is custom
                                - the value will be a JSON containing a pattern to convert the Automated Test from ALM Octane to the accepted format for the Framework
     5. suiteId -  the value does not matter. The integration will populate this variable with the selected Test Suite ID from ALM Octane.
     6. suiteRunId -  the value does not matter. The integration will populate this variable with the executed Suite Run ID from ALM Octane.
        
-3. In the created branch configure the `.gitlab-ci.yml` file to include the logic for running the tests received in the testsToRun variable.
+4. In the created branch configure the `.gitlab-ci.yml` file to include the logic for running the tests received in the testsToRun variable.
    Example for `mvnSurefire`:
     ```
    image: maven:3.3.9-jdk-8
