@@ -41,6 +41,7 @@ import org.gitlab4j.api.models.Project;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.*;
@@ -111,8 +112,9 @@ public class TestResultsHelper {
                     File tempResultFile = File.createTempFile(entry.getName(),".xml");
                     ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(entryStream.toByteArray());
                     String encoding = EncodingHelper.detectCharset(byteArrayInputStream);
-                    String s = entryStream.toString(encoding == null ? StandardCharsets.UTF_8.name() : encoding);
-                    IOUtils.copy(new ByteArrayInputStream(s.getBytes()), tempResultFile);
+                    String xml = entryStream.toString(encoding == null ? StandardCharsets.UTF_8.name() : encoding);
+                    xml = xml.trim().replaceFirst("^([\\W]+)<", "<");
+                    Files.write(tempResultFile.toPath(), xml.getBytes(encoding == null ? StandardCharsets.UTF_8.name() : encoding));
                     result.add(tempResultFile);
                 }
             }
@@ -127,7 +129,7 @@ public class TestResultsHelper {
         }
     }
 
-    public static List<Map.Entry<String, ByteArrayInputStream>> extractArtifacts(InputStream inputStream, String testResultsFilePattern) {
+    public static List<Map.Entry<String, String>> extractArtifacts(InputStream inputStream, String testResultsFilePattern) {
         PathMatcher matcher = FileSystems.getDefault()
                 .getPathMatcher(testResultsFilePattern);
         File tempFile = null;
@@ -142,7 +144,7 @@ public class TestResultsHelper {
 
             ZipFile zipFile = new ZipFile(tempFile);
 
-            List<Map.Entry<String, ByteArrayInputStream>> result = new LinkedList<>();
+            List<Map.Entry<String, String>> result = new LinkedList<>();
             Enumeration<? extends ZipEntry> entries = zipFile.entries();
 
             while (entries.hasMoreElements()) {
@@ -156,8 +158,9 @@ public class TestResultsHelper {
                     }
                     ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(entryStream.toByteArray());
                     String encoding = EncodingHelper.detectCharset(byteArrayInputStream);
-                    String s = entryStream.toString(encoding == null ? StandardCharsets.UTF_8.name() : encoding);
-                    result.add(Pair.of(entry.getName(), new ByteArrayInputStream(s.getBytes())));
+                    String xml = entryStream.toString(encoding != null ? encoding : StandardCharsets.UTF_8.name());
+                    xml = xml.trim().replaceFirst("^([\\W]+)<", "<");
+                    result.add(Pair.of(entry.getName(), xml));
                 }
             }
             return result;
