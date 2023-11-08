@@ -5,7 +5,7 @@
 
     <groupId>com.microfocus.octane.ciplugins</groupId>
     <artifactId>octane-gitlab-service</artifactId>
-    <version>23.3.1</version>
+    <version>23.3.2</version>
 
     <name>ALM Octane GitLab CI Service</name>
     <description>
@@ -108,6 +108,12 @@
     </pluginRepositories>
 
     <dependencies>
+        <dependency>
+            <groupId>com.github.albfernandez</groupId>
+            <artifactId>juniversalchardet</artifactId>
+            <version>2.4.0</version>
+        </dependency>
+
 
         <!--        <dependency>-->
         <!--            <groupId>jakarta.activation</groupId>-->
@@ -221,7 +227,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20230227</version>
+            <version>20231013</version>
         </dependency>
         <dependency>
             <artifactId>integrations-sdk</artifactId>

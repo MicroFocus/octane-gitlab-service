@@ -83,7 +83,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 import javax.xml.transform.TransformerConfigurationException;
-import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -307,16 +309,19 @@ public class EventListener {
             String octaneJobId = project.getPathWithNamespace().toLowerCase() + "/" + job.getName();
             String octaneBuildId = job.getId().toString();
 
-            try (InputStream artifactsStream = gitLabApi.getJobApi()
-                    .downloadArtifactsFile(projectId, job.getId())) {
-                List<Map.Entry<String, ByteArrayInputStream>> coverageResultFiles =
-                        TestResultsHelper.extractArtifacts(artifactsStream, "glob:" + coverageReportFilePattern);
+            try (InputStream artifactsStream = gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId())) {
+                List<File> coverageResultFiles =
+                        TestResultsHelper.extractArtifactsToFiles(artifactsStream, "glob:" + coverageReportFilePattern);
 
                 if (Objects.nonNull(coverageResultFiles) && coverageResultFiles.size() > 0) {
-                    coverageResultFiles.forEach(
-                            coverageFile -> OctaneSDK.getClients().forEach(client -> client.getCoverageService()
-                                    .pushCoverage(octaneJobId, octaneBuildId, CoverageReportType.JACOCOXML,
-                                            coverageFile.getValue())));
+                    coverageResultFiles.forEach(coverageFile -> OctaneSDK.getClients().forEach(client -> {
+                        try {
+                            client.getCoverageService().pushCoverage(octaneJobId, octaneBuildId, CoverageReportType.JACOCOXML,
+                                    new FileInputStream(coverageFile));
+                        } catch (FileNotFoundException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }));
                 }
             } catch (GitLabApiException | IOException exception) {
                 log.error(exception.getMessage());

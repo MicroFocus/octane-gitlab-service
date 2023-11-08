@@ -39,7 +39,9 @@ import org.gitlab4j.api.models.Job;
 import org.gitlab4j.api.models.Project;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.*;
@@ -103,15 +105,16 @@ public class TestResultsHelper {
 
                 if (matcher.matches(Paths.get(entry.getName()))) {
                     ByteArrayOutputStream entryStream = new ByteArrayOutputStream();
-
                     try (InputStream zipEntryStream = zipFile.getInputStream(entry)) {
                         StreamHelper.copyStream(zipEntryStream, entryStream);
                     }
 
                     File tempResultFile = File.createTempFile(entry.getName(),".xml");
-                    FileOutputStream f = null;//new FileOutputStream(entry.getName());
-                    IOUtils.copy(new ByteArrayInputStream(entryStream.toByteArray()), tempResultFile);
-
+                    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(entryStream.toByteArray());
+                    String encoding = EncodingHelper.detectCharset(byteArrayInputStream);
+                    String xml = entryStream.toString(encoding == null ? StandardCharsets.UTF_8.name() : encoding);
+                    xml = xml.trim().replaceFirst("^([\\W]+)<", "<");
+                    Files.write(tempResultFile.toPath(), xml.getBytes(encoding == null ? StandardCharsets.UTF_8.name() : encoding));
                     result.add(tempResultFile);
                 }
             }
@@ -126,7 +129,7 @@ public class TestResultsHelper {
         }
     }
 
-    public static List<Map.Entry<String, ByteArrayInputStream>> extractArtifacts(InputStream inputStream, String testResultsFilePattern) {
+    public static List<Map.Entry<String, String>> extractArtifacts(InputStream inputStream, String testResultsFilePattern) {
         PathMatcher matcher = FileSystems.getDefault()
                 .getPathMatcher(testResultsFilePattern);
         File tempFile = null;
@@ -141,7 +144,7 @@ public class TestResultsHelper {
 
             ZipFile zipFile = new ZipFile(tempFile);
 
-            List<Map.Entry<String, ByteArrayInputStream>> result = new LinkedList<>();
+            List<Map.Entry<String, String>> result = new LinkedList<>();
             Enumeration<? extends ZipEntry> entries = zipFile.entries();
 
             while (entries.hasMoreElements()) {
@@ -153,8 +156,11 @@ public class TestResultsHelper {
                     try (InputStream zipEntryStream = zipFile.getInputStream(entry)) {
                         StreamHelper.copyStream(zipEntryStream, entryStream);
                     }
-
-                    result.add(Pair.of(entry.getName(), new ByteArrayInputStream(entryStream.toByteArray())));
+                    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(entryStream.toByteArray());
+                    String encoding = EncodingHelper.detectCharset(byteArrayInputStream);
+                    String xml = entryStream.toString(encoding != null ? encoding : StandardCharsets.UTF_8.name());
+                    xml = xml.trim().replaceFirst("^([\\W]+)<", "<");
+                    result.add(Pair.of(entry.getName(), xml));
                 }
             }
             return result;

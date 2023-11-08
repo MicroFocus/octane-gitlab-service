@@ -54,9 +54,9 @@ import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -98,17 +98,16 @@ public class JunitTestResultsProvider {
         if(TestResultsHelper.isFilePatternExist(testResultsFilePattern)){
 
             try {
-                List<Map.Entry<String, ByteArrayInputStream>> artifacts = TestResultsHelper.extractArtifacts(artifactFiles,testResultsFilePattern);
+                List<Map.Entry<String, String>> artifacts = TestResultsHelper.extractArtifacts(artifactFiles,testResultsFilePattern);
                 JAXBContext jaxbContext = JAXBContext.newInstance(Testsuites.class);
-                for (Map.Entry<String, ByteArrayInputStream> artifact : artifacts) {
+                for (Map.Entry<String, String> artifact : artifacts) {
                     try {
                         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
                         dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
                         dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
                         DocumentBuilder db = dbf.newDocumentBuilder();
-                        Document doc = db.parse(new InputSource(artifact.getValue()));
+                        Document doc = db.parse(new InputSource(new StringReader(artifact.getValue())));
                         String rootTagName = doc.getDocumentElement().getTagName().toLowerCase();
-                        artifact.getValue().reset();
                         switch (rootTagName) {
                             case "testsuites":
                             case "testsuite":
@@ -117,8 +116,8 @@ public class JunitTestResultsProvider {
                             case "test-run":
                             case "test-results":
                                 ByteArrayOutputStream os = new ByteArrayOutputStream();
-                                nunitTransformer.transform(new StreamSource(artifact.getValue()), new StreamResult(os));
-                                unmarshallAndAddToResults(result, jaxbContext, new ByteArrayInputStream(os.toByteArray()));
+                                nunitTransformer.transform(new StreamSource(new StringReader(artifact.getValue())), new StreamResult(os));
+                                unmarshallAndAddToResults(result, jaxbContext, os.toString());
                                 break;
                             default:
                                 log.error(String.format("Artifact %s: unknown test result format that starts with the <%s> tag", artifact.getKey(), rootTagName));
@@ -140,7 +139,7 @@ public class JunitTestResultsProvider {
         if(TestResultsHelper.isFilePatternExist(testResultsFilePattern)){
 
             try {
-                List<Map.Entry<String, ByteArrayInputStream>> artifacts = TestResultsHelper.extractArtifacts(artifactFiles,testResultsFilePattern);
+                List<Map.Entry<String, String>> artifacts = TestResultsHelper.extractArtifacts(artifactFiles,testResultsFilePattern);
                 if(artifacts!=null && !artifacts.isEmpty()){
                     TestResultsHelper.pushTestResultsKey(project,job);
                     return true;
@@ -154,8 +153,8 @@ public class JunitTestResultsProvider {
         return false;
     }
 
-    private void unmarshallAndAddToResults(List<TestRun> result, JAXBContext jaxbContext, ByteArrayInputStream artifact) throws JAXBException {
-        Object ots = jaxbContext.createUnmarshaller().unmarshal(artifact);
+    private void unmarshallAndAddToResults(List<TestRun> result, JAXBContext jaxbContext, String artifact) throws JAXBException {
+        Object ots = jaxbContext.createUnmarshaller().unmarshal(new StringReader(artifact));
         if (ots instanceof Testsuites) {
             ((Testsuites) ots).getTestsuite().forEach(ts -> ts.getTestcase().forEach(tc -> addTestCase(result, ts, tc)));
         } else if (ots instanceof Testsuite) {
@@ -167,7 +166,7 @@ public class JunitTestResultsProvider {
         TestRunResult testResultStatus;
         if (tc.getSkipped() != null && tc.getSkipped().trim().length() > 0) {
             testResultStatus = TestRunResult.SKIPPED;
-        } else if (tc.getFailure().size() > 0) {
+        } else if (tc.getFailure().size() > 0 || tc.getError().size() > 0) {
             testResultStatus = TestRunResult.FAILED;
         } else {
             testResultStatus = TestRunResult.PASSED;
