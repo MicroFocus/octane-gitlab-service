@@ -91,6 +91,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -106,17 +107,19 @@ import java.util.Optional;
 @Component
 @Path("/events")
 public class EventListener {
-    public static final String LISTENING = "Listening to GitLab events!!!";
-    private static final Logger log = LogManager.getLogger(EventListener.class);
-    private static final DTOFactory dtoFactory = DTOFactory.getInstance();
-    private final GitLabApi gitLabApi;
-    private final ApplicationSettings applicationSettings;
-    private final Map<Long, JSONArray> pipelineVariables = new HashMap<>();
-    private final List<Long> sentRoots = new ArrayList<>();
-    private final Map<Long, List<Pair<CIEvent, JSONObject>>> noRootEvents = new HashMap<>();
+    public static final  String                                     LISTENING         = "Listening to GitLab events!!!";
+    private static final Logger                                     log               = LogManager.getLogger(EventListener.class);
+    private static final DTOFactory                                 dtoFactory        = DTOFactory.getInstance();
+    private final        GitLabApi                                  gitLabApi;
+    private final        ApplicationSettings                        applicationSettings;
+    private final        Map<Long, JSONArray>                       pipelineVariables = new HashMap<>();
+    private final        List<Long>                                 sentRoots         = new ArrayList<>();
+    private final        Map<Long, List<Pair<CIEvent, JSONObject>>> noRootEvents      = new HashMap<>();
+    private final        Map<Long, String>                          lastJobEvents     = new HashMap<>();
 
     @Autowired
-    public EventListener(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper, OctaneServices octaneServices) {
+    public EventListener(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper,
+            OctaneServices octaneServices) {
         this.applicationSettings = applicationSettings;
         this.gitLabApi = gitLabApiWrapper.getGitLabApi();
     }
@@ -169,10 +172,12 @@ public class EventListener {
                     ParsedPath parsedPath = new ParsedPath(ciEvent.getProject(), gitLabApi, PathType.PIPELINE);
 
                     String projectDisplayName = parsedPath.getNameWithNameSpaceForDisplayName() != null ?
-                            parsedPath.getNameWithNameSpaceForDisplayName() : parsedPath.getFullPathOfProjectWithBranch();
+                                                parsedPath.getNameWithNameSpaceForDisplayName() :
+                                                parsedPath.getFullPathOfProjectWithBranch();
 
                     ciEvent.setProjectDisplayName(projectDisplayName + "/" + parsedPath.getCurrentBranch());
-                    ciEvent.setParentCiId(parsedPath.getJobCiId(true)).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD).setSkipValidation(true);
+                    ciEvent.setParentCiId(parsedPath.getJobCiId(true)).setMultiBranchType(MultiBranchType.MULTI_BRANCH_CHILD)
+                            .setSkipValidation(true);
                 }
 
                 long pipelineId = getPipelineId(event);
@@ -183,8 +188,10 @@ public class EventListener {
 
                 if (isPipelineEvent(event) || (isBuildEvent(event) && eventType == CIEventType.STARTED)) {
                     List<CIParameter> parametersList = new ArrayList<>();
-                    if (pipelineVariables.get(pipelineId) != null)
-                        pipelineVariables.get(pipelineId).forEach(var -> parametersList.add(VariablesHelper.convertVariableToParameter(var)));
+                    if (pipelineVariables.get(pipelineId) != null) {
+                        pipelineVariables.get(pipelineId)
+                                .forEach(var -> parametersList.add(VariablesHelper.convertVariableToParameter(var)));
+                    }
 
                     if (parametersList.size() > 0) {
                         ciEvent.setParameters(parametersList);
@@ -195,52 +202,73 @@ public class EventListener {
                     OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(ciEvent));
 
                     CIEvent scmEvent = getScmEvent(event);
-                    if (scmEvent != null)
+                    if (scmEvent != null) {
                         OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(scmEvent));
+                    }
+
+                    String lastJobEvent = event.getJSONArray("builds").toList().stream().max((firstBuild, secondBuild) -> {
+                        if ((Long) ((Map<?, ?>) firstBuild).get("id") > (Long) ((Map<?, ?>) secondBuild).get("id")) {
+                            return 1;
+                        }
+                        return -1;
+                    }).map(build -> (String) ((Map<?, ?>) build).get("name")).orElse("");
+                    lastJobEvents.put(pipelineId, lastJobEvent);
 
                     sentRoots.add(pipelineId);
                 } else {
-                    if (!sentRoots.contains(pipelineId)) {
-                        List<Pair<CIEvent, JSONObject>> pipelineEvents = noRootEvents.containsKey(pipelineId) ? noRootEvents.get(pipelineId) : new ArrayList<>();
+                    if (!sentRoots.contains(pipelineId) && isNotLastFinishedJob(pipelineId, event)) {
+                        List<Pair<CIEvent, JSONObject>> pipelineEvents =
+                                noRootEvents.containsKey(pipelineId) ? noRootEvents.get(pipelineId) : new ArrayList<>();
                         pipelineEvents.add(new ImmutablePair<>(ciEvent, event));
 
                         noRootEvents.put(pipelineId, pipelineEvents);
                     } else {
-
                         if (noRootEvents.containsKey(pipelineId)) {
                             noRootEvents.get(pipelineId).forEach(noRootEvent -> {
-                                        OctaneSDK.getClients().forEach(client ->
-                                                client.getEventsService().publishEvent(noRootEvent.getKey()));
-                                        try {
-                                            if (getEventType(noRootEvent.getValue()) == CIEventType.FINISHED)
-                                                warnings.add(checkForCoverage(noRootEvent.getValue()));
-                                        } catch (Exception e) {
-                                            log.warn("An error occurred while handling GitLab event", e);
-                                        }
+                                OctaneSDK.getClients()
+                                        .forEach(client -> client.getEventsService().publishEvent(noRootEvent.getKey()));
+                                try {
+                                    if (getEventType(noRootEvent.getValue()) == CIEventType.FINISHED) {
+                                        warnings.add(checkForCoverage(noRootEvent.getValue()));
                                     }
-                            );
+                                } catch (Exception e) {
+                                    log.warn("An error occurred while handling GitLab event", e);
+                                }
+                            });
                             noRootEvents.remove(pipelineId);
                         }
 
                         OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(ciEvent));
 
+                        if (!isNotLastFinishedJob(pipelineId, event)) {
+                            lastJobEvents.remove(pipelineId);
+                        }
+
                         if (eventType == CIEventType.FINISHED) {
                             warnings.add(checkForCoverage(event));
-                            if (isPipelineEvent(event))
+                            if (isPipelineEvent(event)) {
                                 sentRoots.remove(pipelineId);
+                            }
                         }
                     }
                 }
             }
 
             warnings.removeAll(Collections.singletonList(""));
-            if (!warnings.isEmpty())
+            if (!warnings.isEmpty()) {
                 return Response.ok().entity(warnings).build();
+            }
         } catch (Exception e) {
             log.warn("An error occurred while handling GitLab event", e);
         }
         log.traceExit();
         return Response.ok().build();
+    }
+
+    private boolean isNotLastFinishedJob(long pipelineId, JSONObject event) {
+        return isPipelineEvent(event) ||
+               !event.getString("build_name").equals(lastJobEvents.get(pipelineId)) ||
+               !CIEventType.FINISHED.equals(getEventType(event));
     }
 
 
@@ -260,9 +288,10 @@ public class EventListener {
 
                 sendCodeCoverage(projectId, project, job);
 
-                GherkinTestResultsProvider gherkinTestResultsProvider = GherkinTestResultsProvider.getInstance(applicationSettings);
-                boolean isGherkinTestsExist =
-                        gherkinTestResultsProvider.createTestList(project, job, gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
+                GherkinTestResultsProvider gherkinTestResultsProvider =
+                        GherkinTestResultsProvider.getInstance(applicationSettings);
+                boolean isGherkinTestsExist = gherkinTestResultsProvider.createTestList(project, job,
+                        gitLabApi.getJobApi().downloadArtifactsFile(projectId, job.getId()));
 
                 //looking for Regular tests
                 if (!isGherkinTestsExist) {
@@ -295,16 +324,17 @@ public class EventListener {
         Optional<Variable> coverageReportFilePathVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
                 applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
 
-        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project, applicationSettings.getConfig());
+        Map<String, String> projectGroupVariables =
+                VariablesHelper.getProjectGroupVariables(gitLabApi, project, applicationSettings.getConfig());
 
-        if (coverageReportFilePathVar.isEmpty() && !projectGroupVariables.containsKey(
-                applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName())) {
+        if (coverageReportFilePathVar.isEmpty() &&
+            !projectGroupVariables.containsKey(
+                    applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName())) {
             log.info("Variable for JaCoCo coverage report path not set. No coverage injection for this pipeline.");
         } else {
-            String coverageReportFilePattern = coverageReportFilePathVar.isPresent()
-                    ? coverageReportFilePathVar.get().getValue()
-                    : projectGroupVariables.get(
-                    applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
+            String coverageReportFilePattern =
+                    coverageReportFilePathVar.isPresent() ? coverageReportFilePathVar.get().getValue() :
+                    projectGroupVariables.get(applicationSettings.getConfig().getGeneratedCoverageReportFilePathVariableName());
 
             String octaneJobId = project.getPathWithNamespace().toLowerCase() + "/" + job.getName();
             String octaneBuildId = job.getId().toString();
@@ -340,19 +370,19 @@ public class EventListener {
         }
 
         Project project = gitLabApi.getProjectApi().getProject(event.getJSONObject("project").getLong("id"));
-        Map<String, String> projectGroupVariables = VariablesHelper.getProjectGroupVariables(gitLabApi, project, applicationSettings.getConfig());
+        Map<String, String> projectGroupVariables =
+                VariablesHelper.getProjectGroupVariables(gitLabApi, project, applicationSettings.getConfig());
 
-        Optional<Variable> publishMergeRequests = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
-                config.getPublishMergeRequestsVariableName());
+        Optional<Variable> publishMergeRequests =
+                VariablesHelper.getProjectVariable(gitLabApi, project.getId(), config.getPublishMergeRequestsVariableName());
         if (((publishMergeRequests.isEmpty() || !Boolean.parseBoolean(publishMergeRequests.get().getValue())) &&
-                (!projectGroupVariables.containsKey(config.getPublishMergeRequestsVariableName()) ||
-                        !Boolean.parseBoolean(
-                                projectGroupVariables.get(config.getPublishMergeRequestsVariableName()))))) {
+             (!projectGroupVariables.containsKey(config.getPublishMergeRequestsVariableName()) ||
+              !Boolean.parseBoolean(projectGroupVariables.get(config.getPublishMergeRequestsVariableName()))))) {
             return Response.ok().build();
         }
 
-        Optional<Variable> destinationWSVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
-                config.getDestinationWorkspaceVariableName());
+        Optional<Variable> destinationWSVar =
+                VariablesHelper.getProjectVariable(gitLabApi, project.getId(), config.getDestinationWorkspaceVariableName());
         String destinationWS;
 
         if (destinationWSVar.isEmpty() && !projectGroupVariables.containsKey(config.getDestinationWorkspaceVariableName())) {
@@ -365,11 +395,11 @@ public class EventListener {
             destinationWS = projectGroupVariables.get(config.getDestinationWorkspaceVariableName());
         }
 
-        Optional<Variable> useSSHFormatVar = VariablesHelper.getProjectVariable(gitLabApi, project.getId(),
-                config.getUseSSHFormatVariableName());
+        Optional<Variable> useSSHFormatVar =
+                VariablesHelper.getProjectVariable(gitLabApi, project.getId(), config.getUseSSHFormatVariableName());
         boolean useSSHFormat = useSSHFormatVar.isPresent() && Boolean.parseBoolean(useSSHFormatVar.get().getValue()) ||
-                projectGroupVariables.containsKey(config.getUseSSHFormatVariableName()) &&
-                        Boolean.parseBoolean(projectGroupVariables.get(config.getUseSSHFormatVariableName()));
+                               projectGroupVariables.containsKey(config.getUseSSHFormatVariableName()) &&
+                               Boolean.parseBoolean(projectGroupVariables.get(config.getUseSSHFormatVariableName()));
 
         String repoUrl = useSSHFormat ? project.getSshUrlToRepo() : project.getHttpUrlToRepo();
 
@@ -399,20 +429,11 @@ public class EventListener {
         SCMData scmData = getScmData(event);
         boolean isScmNull = scmData == null;
 
-        return !isScmNull ? dtoFactory.newDTO(CIEvent.class)
-                .setProjectDisplayName(getCiDisplayName(event))
-                .setEventType(CIEventType.SCM)
-                .setBuildCiId(Long.toString(buildCiId))
-                .setNumber(null)
-                .setProject(getCiFullName(event))
-                .setResult(null)
-                .setStartTime(null)
-                .setEstimatedDuration(null)
-                .setDuration(null)
-                .setScmData(scmData)
-                .setCauses(getCauses(event, false))
-                .setPhaseType(null) :
-                null;
+        return !isScmNull ?
+               dtoFactory.newDTO(CIEvent.class).setProjectDisplayName(getCiDisplayName(event)).setEventType(CIEventType.SCM)
+                       .setBuildCiId(Long.toString(buildCiId)).setNumber(null).setProject(getCiFullName(event)).setResult(null)
+                       .setStartTime(null).setEstimatedDuration(null).setDuration(null).setScmData(scmData)
+                       .setCauses(getCauses(event, false)).setPhaseType(null) : null;
     }
 
 
@@ -431,26 +452,25 @@ public class EventListener {
             }
         }
 
-        return dtoFactory.newDTO(CIEvent.class)
-                .setProjectDisplayName(getCiDisplayName(event))
-                .setEventType(eventType)
-                .setBuildCiId(Long.toString(buildCiId))
-                .setNumber(Long.toString(buildCiId))
-                .setProject(getCiFullName(event))
-                .setResult(eventType == CIEventType.STARTED || eventType == CIEventType.DELETED ? null : convertCiBuildResult(getStatus(event)))
-                .setStartTime(startTime)
-                .setEstimatedDuration(null)
-                .setDuration(calculateDuration(eventType, duration))
-                .setScmData(null)
-                .setCauses(getCauses(event, isScmNull))
+        return dtoFactory.newDTO(CIEvent.class).setProjectDisplayName(getCiDisplayName(event)).setEventType(eventType)
+                .setBuildCiId(Long.toString(buildCiId)).setNumber(Long.toString(buildCiId)).setProject(getCiFullName(event))
+                .setResult(eventType == CIEventType.STARTED || eventType == CIEventType.DELETED ? null :
+                           convertCiBuildResult(getStatus(event))).setStartTime(startTime).setEstimatedDuration(null)
+                .setDuration(calculateDuration(eventType, duration)).setScmData(null).setCauses(getCauses(event, isScmNull))
                 .setPhaseType(isPipelineEvent(event) ? PhaseType.POST : PhaseType.INTERNAL);
     }
 
     private Long calculateDuration(CIEventType eventType, Object duration) {
-        if (eventType == CIEventType.STARTED || Objects.equals(duration, null)) return 0L;
+        if (eventType == CIEventType.STARTED || Objects.equals(duration, null)) {
+            return 0L;
+        }
 
-        if (duration instanceof Double) return Math.round(1000 * (Double) duration);
-        if (duration instanceof BigDecimal) return Long.valueOf(Math.round(1000 * ((BigDecimal) duration).intValue()));
+        if (duration instanceof Double) {
+            return Math.round(1000 * (Double) duration);
+        }
+        if (duration instanceof BigDecimal) {
+            return Long.valueOf(Math.round(1000 * ((BigDecimal) duration).intValue()));
+        }
 
         return Long.valueOf(Math.round(1000 * (Integer) duration));
 
@@ -502,20 +522,30 @@ public class EventListener {
         }
         String pipelineSchedule = null;
         try {
-            pipelineSchedule = isPipelineEvent(event) ? event.getJSONObject("object_attributes").getString("pipeline_schedule") : null;
+            pipelineSchedule =
+                    isPipelineEvent(event) ? event.getJSONObject("object_attributes").getString("pipeline_schedule") : null;
         } catch (Exception e) {
             log.warn("Failed to infer event cause type, using 'USER' as default");
         }
-        if (pipelineSchedule != null && pipelineSchedule.equals("true")) return CIEventCauseType.TIMER;
+        if (pipelineSchedule != null && pipelineSchedule.equals("true")) {
+            return CIEventCauseType.TIMER;
+        }
         return CIEventCauseType.USER;
     }
 
     private CIBuildResult convertCiBuildResult(String status) {
-        if (status.equals("success")) return CIBuildResult.SUCCESS;
-        if (status.equals("failed")) return CIBuildResult.FAILURE;
-        if (status.equals("drop") || status.equals("skipped") || status.equals("canceled"))
+        if (status.equals("success")) {
+            return CIBuildResult.SUCCESS;
+        }
+        if (status.equals("failed")) {
+            return CIBuildResult.FAILURE;
+        }
+        if (status.equals("drop") || status.equals("skipped") || status.equals("canceled")) {
             return CIBuildResult.ABORTED;
-        if (status.equals("unstable")) return CIBuildResult.UNSTABLE;
+        }
+        if (status.equals("unstable")) {
+            return CIBuildResult.UNSTABLE;
+        }
         return CIBuildResult.UNAVAILABLE;
     }
 
@@ -566,8 +596,21 @@ public class EventListener {
         } else if (isDeleteBranchEvent(event)) {
             String ref = event.getString("ref");
             return ref.substring("refs/heads/".length());
+        } else if (isBuildWithMergeRef(event)) {
+            try {
+                java.nio.file.Path path = Paths.get(event.getString("ref"));
+                return gitLabApi.getMergeRequestApi().getMergeRequest(Long.toString(event.getLong("project_id")),
+                        Long.parseLong(path.subpath(2, 3).toString())).getSourceBranch();
+            } catch (GitLabApiException e) {
+                log.warn("Failed to find the merge_request from build event ref value in GitLab, using an empty string as default", e);
+                return "";
+            }
         }
         return event.getString("ref");
+    }
+
+    private boolean isBuildWithMergeRef(JSONObject event) {
+        return event.getString("ref").matches("refs/merge-requests/[0-9]*/head");
     }
 
 
@@ -587,7 +630,8 @@ public class EventListener {
     }
 
     private long getRootId(JSONObject event) {
-        return isPipelineEvent(event) ? event.getJSONObject("object_attributes").getLong("id") : event.getJSONObject("commit").getLong("id");
+        return isPipelineEvent(event) ? event.getJSONObject("object_attributes").getLong("id") :
+               event.getJSONObject("commit").getLong("id");
     }
 
     private SCMData getScmData(JSONObject event) {
@@ -653,7 +697,8 @@ public class EventListener {
 
     private Long getTime(JSONObject event, String attrName) {
         try {
-            String time = isPipelineEvent(event) ? event.getJSONObject("object_attributes").getString(attrName) : event.getString("build_" + attrName);
+            String time = isPipelineEvent(event) ? event.getJSONObject("object_attributes").getString(attrName) :
+                          event.getString("build_" + attrName);
             return time == null ? null : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.ENGLISH).parse(time).getTime();
         } catch (Exception e) {
             String message = "Failed to return the '" + attrName + "' of the job, using null as default.";
@@ -699,8 +744,12 @@ public class EventListener {
     private CIEventType getEventType(JSONObject event) {
         String statusStr = getStatus(event);
         if (isPipelineEvent(event)) {
-            if (statusStr.equals("pending")) return CIEventType.STARTED;
-            if (statusStr.equals("running")) return CIEventType.UNDEFINED;
+            if (statusStr.equals("pending")) {
+                return CIEventType.STARTED;
+            }
+            if (statusStr.equals("running")) {
+                return CIEventType.UNDEFINED;
+            }
         }
         if (Arrays.asList(new String[]{"process", "enqueue", "pending", "created"}).contains(statusStr)) {
             return CIEventType.QUEUED;
