@@ -63,6 +63,7 @@ import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Job;
 import org.gitlab4j.api.models.Pipeline;
+import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
@@ -374,12 +375,27 @@ public class OctaneServices extends CIPluginServices {
     }
 
 
+    private Job extractGitLabJob (ParsedPath project, String buildNumber){
+        try {
+            if (project.getPathWithNameSpace().isEmpty())
+                throw new RuntimeException("Can not find gitlab project path");
+            return gitLabApi.getJobApi().getJob(project.getPathWithNameSpace(), Long.parseLong(buildNumber));
+        } catch (GitLabApiException e){
+            return null;
+        }
+    }
+
+
     @Override
     public InputStream getTestsResult(String jobFullName, String buildNumber) {
         TestsResult result = dtoFactory.newDTO(TestsResult.class);
         try {
             ParsedPath project = new ParsedPath(ParsedPath.cutLastPartOfPath(jobFullName), gitLabApi, PathType.PROJECT);
-            Job job = gitLabApi.getJobApi().getJob(project.getPathWithNameSpace(), Long.parseLong(buildNumber));
+            Job job = extractGitLabJob(project, buildNumber);
+            while (job == null){
+                project = new ParsedPath(ParsedPath.cutLastPartOfPath(project.getPathWithNameSpace()), gitLabApi, PathType.PROJECT);
+                job = extractGitLabJob(project, buildNumber);
+            }
 
             //report gherkin test results
 
