@@ -63,7 +63,6 @@ import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Job;
 import org.gitlab4j.api.models.Pipeline;
-import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
