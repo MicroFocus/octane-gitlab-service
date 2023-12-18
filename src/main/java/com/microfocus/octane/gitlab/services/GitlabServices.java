@@ -127,13 +127,13 @@ public class GitlabServices {
             log.warn("Failed to create GitLab web hooks", e);
             throw new RuntimeException(e);
         }
-
-        //start test cleanUp thread
-        testCleanupExecutor =
-                Executors.newSingleThreadScheduledExecutor();
-        testCleanupScheduledFuture = testCleanupExecutor.scheduleAtFixedRate(
-                new TestResultsCleanUpRunnable(applicationSettings.getConfig().getTestResultsOutputFolderPath()),  TestResultsCleanUpRunnable.INTERVAL, TestResultsCleanUpRunnable.INTERVAL, TimeUnit.MINUTES);
-
+        if(!cleanupOnly) {
+            //start test cleanUp thread
+            testCleanupExecutor = Executors.newSingleThreadScheduledExecutor();
+            testCleanupScheduledFuture = testCleanupExecutor.scheduleAtFixedRate(
+                    new TestResultsCleanUpRunnable(applicationSettings.getConfig().getTestResultsOutputFolderPath()),
+                    TestResultsCleanUpRunnable.INTERVAL, TestResultsCleanUpRunnable.INTERVAL, TimeUnit.MINUTES);
+        }
     }
 
     private void initWebHookListenerURL() throws MalformedURLException {
@@ -147,16 +147,16 @@ public class GitlabServices {
     @PreDestroy
     private void stop() {
         try {
+            if(!cleanupOnly) {
+                stopExecutors();
 
-            stopExecutors();
+                log.info("Destroying GitLab webhooks ...");
 
-            log.info("Destroying GitLab webhooks ...");
+                ProjectFilter filter = new ProjectFilter().withMembership(true).withMinAccessLevel(AccessLevel.MAINTAINER);
 
-            ProjectFilter filter = new ProjectFilter().withMembership(true)
-                    .withMinAccessLevel(AccessLevel.MAINTAINER);
-
-            List<Project> projects = gitLabApi.getProjectApi().getProjects(filter);
-            HooksHelper.deleteWebHooks(projects,webhookURL,gitLabApi);
+                List<Project> projects = gitLabApi.getProjectApi().getProjects(filter);
+                HooksHelper.deleteWebHooks(projects, webhookURL, gitLabApi);
+            }
 
         } catch (Exception e) {
             log.warn("Failed to destroy GitLab webhooks", e);

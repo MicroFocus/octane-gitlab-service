@@ -374,12 +374,28 @@ public class OctaneServices extends CIPluginServices {
     }
 
 
+    private Optional<Job> extractGitLabJob (ParsedPath project, String buildNumber){
+        try {
+            if (project.getPathWithNameSpace().isEmpty())
+                throw new RuntimeException("Can not find gitlab project path");
+            return Optional.of(gitLabApi.getJobApi().getJob(project.getPathWithNameSpace(), Long.parseLong(buildNumber)));
+        } catch (GitLabApiException e){
+            return Optional.empty();
+        }
+    }
+
+
     @Override
     public InputStream getTestsResult(String jobFullName, String buildNumber) {
         TestsResult result = dtoFactory.newDTO(TestsResult.class);
         try {
             ParsedPath project = new ParsedPath(ParsedPath.cutLastPartOfPath(jobFullName), gitLabApi, PathType.PROJECT);
-            Job job = gitLabApi.getJobApi().getJob(project.getPathWithNameSpace(), Long.parseLong(buildNumber));
+            Optional<Job> optionalJob = extractGitLabJob(project, buildNumber);
+            while (optionalJob.isEmpty()){
+                project = new ParsedPath(ParsedPath.cutLastPartOfPath(project.getPathWithNameSpace()), gitLabApi, PathType.PROJECT);
+                optionalJob = extractGitLabJob(project, buildNumber);
+            }
+            Job job = optionalJob.get();
 
             //report gherkin test results
 
