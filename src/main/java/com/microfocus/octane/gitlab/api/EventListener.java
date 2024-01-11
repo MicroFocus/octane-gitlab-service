@@ -206,13 +206,7 @@ public class EventListener {
                         OctaneSDK.getClients().forEach(client -> client.getEventsService().publishEvent(scmEvent));
                     }
 
-                    String lastJobEvent = event.getJSONArray("builds").toList().stream().max((firstBuild, secondBuild) -> {
-                        if ((Long) ((Map<?, ?>) firstBuild).get("id") > (Long) ((Map<?, ?>) secondBuild).get("id")) {
-                            return 1;
-                        }
-                        return -1;
-                    }).map(build -> (String) ((Map<?, ?>) build).get("name")).orElse("");
-                    lastJobEvents.put(pipelineId, lastJobEvent);
+                    lastJobEvents.put(pipelineId, getLastJobEventNameOfPipeline(event));
 
                     sentRoots.add(pipelineId);
                 } else {
@@ -782,4 +776,17 @@ public class EventListener {
                 event.isNull("checkout_sha"));
 
     }
+    private String getLastJobEventNameOfPipeline(JSONObject event) {
+        String lastJobEvent = "";
+        long maxId = 0;
+        JSONArray buildsArray = event.getJSONArray("builds");
+        for (int i = 0; i < buildsArray.length(); i++) {
+            if (buildsArray.getJSONObject(i).getLong("id") > maxId) {
+                maxId = buildsArray.getJSONObject(i).getLong("id");
+                lastJobEvent = buildsArray.getJSONObject(i).getString("name");
+            }
+        }
+        return lastJobEvent;
+    }
+
 }
