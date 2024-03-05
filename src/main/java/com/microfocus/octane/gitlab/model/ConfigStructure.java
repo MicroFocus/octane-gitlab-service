@@ -139,7 +139,7 @@ public class ConfigStructure {
             }
         });
 
-        if (validationErrors.size() > 0) {
+        if (!validationErrors.isEmpty()) {
             AtomicInteger counter = new AtomicInteger(1);
             throw new ValidationException(validationErrors.stream().map(e -> (counter.getAndIncrement() + ": " + e)).collect(Collectors.joining("\n", "\n", "")));
         }
@@ -159,7 +159,7 @@ public class ConfigStructure {
      * @return true when the service is permitted to run pipelines from Octane UI, otherwise- return false.
      */
     public boolean canRunPipeline() {
-        return Boolean.valueOf(canRunPipeline);
+        return Boolean.parseBoolean(canRunPipeline);
     }
 
     public List<String> getGitlabVariablesPipelineUsage(){
@@ -210,8 +210,9 @@ public class ConfigStructure {
        return testResultsOutputFolderPath;
     }
     public String getProxyField(String protocol, String fieldName) {
-        Optional<Field> field = Arrays.stream(this.getClass().getDeclaredFields()).filter(f -> f.getName().toLowerCase().equals(protocol.concat(fieldName).toLowerCase())).findFirst();
-        if (!field.isPresent()) {
+        Optional<Field> field = Arrays.stream(this.getClass().getDeclaredFields()).filter(f -> f.getName()
+                .equalsIgnoreCase(protocol.concat(fieldName))).findFirst();
+        if (field.isEmpty()) {
             throw new IllegalArgumentException(String.format("%s.%s", protocol, fieldName));
         }
         try {

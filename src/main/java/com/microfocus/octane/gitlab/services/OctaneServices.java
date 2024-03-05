@@ -68,7 +68,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import javax.xml.transform.TransformerConfigurationException;
 import java.io.*;
 import java.net.URL;
 
@@ -96,10 +95,6 @@ public class OctaneServices extends CIPluginServices {
     private final String TEST_RUNNER_FRAMEWORK_PARAM_NAME = "testRunnerFramework";
     private final String TEST_RUNNER_CUSTOM_PATTERN = "testRunnerCustomPattern";
     private final long NO_SUCH_PIPELINE = -1;
-
-    @Autowired
-    public OctaneServices() throws TransformerConfigurationException {
-    }
 
     @Override
     public CIServerInfo getServerInfo() {
@@ -189,7 +184,7 @@ public class OctaneServices extends CIPluginServices {
     @Override
     public CIJobsList getJobsList(boolean includeParameters, Long workspaceId) {
         try {
-            CIJobsList jobList = gitlabServices.getJobList(includeParameters,workspaceId);
+            CIJobsList jobList = gitlabServices.getJobList(includeParameters);
             if (jobList.getJobs().length < 1) {
                 log.warn("IMPORTANT: The integration user has no project member permissions");
             }
@@ -348,15 +343,11 @@ public class OctaneServices extends CIPluginServices {
         ParsedPath parsedPath = new ParsedPath(jobCiId, gitLabApi, PathType.PIPELINE);
 
         try {
-            List<Branch> result = new ArrayList<>();
             String path = parsedPath.getPathWithNameSpace();
 
-            List<Branch> branches = gitLabApi.getRepositoryApi().getBranches(path, filterBranchName)
-                    .stream().map(branch -> dtoFactory.newDTO(Branch.class)
-                            .setName(branch.getName())
-                            .setInternalId(ParsedPath.convertBranchName(branch.getName())))
-                    .collect(Collectors.toList());
-            result.addAll(branches);
+            List<Branch> result = gitLabApi.getRepositoryApi().getBranches(path, filterBranchName).stream()
+                    .map(branch -> dtoFactory.newDTO(Branch.class).setName(branch.getName())
+                            .setInternalId(ParsedPath.convertBranchName(branch.getName()))).collect(Collectors.toList());
 
             List<Branch> tags = gitLabApi.getTagsApi().getTags(path, null, null, filterBranchName)
                     .stream().map(tag -> dtoFactory.newDTO(Branch.class)
@@ -376,10 +367,9 @@ public class OctaneServices extends CIPluginServices {
 
     private Optional<Job> extractGitLabJob (ParsedPath project, String buildNumber){
         try {
-            if (project.getPathWithNameSpace().isEmpty())
-                throw new RuntimeException("Can not find gitlab project path");
             return Optional.of(gitLabApi.getJobApi().getJob(project.getPathWithNameSpace(), Long.parseLong(buildNumber)));
         } catch (GitLabApiException e){
+            log.debug(e.getMessage(), e);
             return Optional.empty();
         }
     }
@@ -390,12 +380,16 @@ public class OctaneServices extends CIPluginServices {
         TestsResult result = dtoFactory.newDTO(TestsResult.class);
         try {
             ParsedPath project = new ParsedPath(ParsedPath.cutLastPartOfPath(jobFullName), gitLabApi, PathType.PROJECT);
+            ParsedPath cutProject = new ParsedPath(ParsedPath.cutLastPartOfPath(project.getPathWithNameSpace()), gitLabApi, PathType.PROJECT);
+
             Optional<Job> optionalJob = extractGitLabJob(project, buildNumber);
-            while (optionalJob.isEmpty()){
+            while (optionalJob.isEmpty() && !project.getFullPathOfProject().equals(cutProject.getFullPathOfProject())){
+                cutProject = project;
                 project = new ParsedPath(ParsedPath.cutLastPartOfPath(project.getPathWithNameSpace()), gitLabApi, PathType.PROJECT);
                 optionalJob = extractGitLabJob(project, buildNumber);
             }
-            Job job = optionalJob.get();
+
+            Job job = optionalJob.orElseThrow(() -> new RuntimeException("Can not find gitlab project path: " + jobFullName));
 
             //report gherkin test results
 
@@ -443,17 +437,17 @@ public class OctaneServices extends CIPluginServices {
 
     @Autowired
     public void setApplicationSettings(ApplicationSettings applicationSettings) {
-        this.applicationSettings = applicationSettings;
+        OctaneServices.applicationSettings = applicationSettings;
     }
 
     @Autowired
     public void setGitlabServices(GitlabServices gitlabServices) {
-        this.gitlabServices = gitlabServices;
+        OctaneServices.gitlabServices = gitlabServices;
     }
 
     @Autowired
     public void setGitLabApi(GitLabApiWrapper gitLabApiWrapper) {
-        this.gitLabApiWrapper = gitLabApiWrapper;
+        OctaneServices.gitLabApiWrapper = gitLabApiWrapper;
         gitLabApi = gitLabApiWrapper.getGitLabApi();
     }
 
@@ -521,7 +515,7 @@ public class OctaneServices extends CIPluginServices {
                         .filter(ciBuildStatus -> Objects.equals(ciBuildStatus, currentCIBuildStatus))
                         .findAny();
 
-                if (!buildStatus.isPresent()) {
+                if (buildStatus.isEmpty()) {
                     throw new RuntimeException("Failed to get the correct build status");
                 }
                 return dtoFactory.newDTO(CIBuildStatusInfo.class)

@@ -36,7 +36,11 @@ import com.hp.octane.integrations.dto.parameters.CIParameter;
 import com.hp.octane.integrations.dto.parameters.CIParameterType;
 import com.hp.octane.integrations.dto.pipelines.PipelineNode;
 import com.microfocus.octane.gitlab.app.ApplicationSettings;
-import com.microfocus.octane.gitlab.helpers.*;
+import com.microfocus.octane.gitlab.helpers.GitLabApiWrapper;
+import com.microfocus.octane.gitlab.helpers.HooksHelper;
+import com.microfocus.octane.gitlab.helpers.ParsedPath;
+import com.microfocus.octane.gitlab.helpers.PathType;
+import com.microfocus.octane.gitlab.helpers.VariablesHelper;
 import com.microfocus.octane.gitlab.testresults.HooksUpdateRunnable;
 import com.microfocus.octane.gitlab.testresults.TestResultsCleanUpRunnable;
 import org.apache.http.HttpStatus;
@@ -52,7 +56,6 @@ import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.AccessLevel;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectFilter;
-import org.gitlab4j.api.models.User;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
@@ -75,26 +78,28 @@ import java.util.concurrent.TimeUnit;
 @Component
 @Scope("singleton")
 public class GitlabServices {
-    private static final Logger log = LogManager.getLogger(GitlabServices.class);
-    private static final DTOFactory dtoFactory = DTOFactory.getInstance();
-    private final ApplicationSettings applicationSettings;
-    private final GitLabApiWrapper gitLabApiWrapper;
-    private GitLabApi gitLabApi;
-    private boolean cleanupOnly =false;
-    private  ScheduledExecutorService testCleanupExecutor;
-    private ScheduledFuture<?> testCleanupScheduledFuture;
-    private  ScheduledExecutorService updateHooksExecutor;
-    private ScheduledFuture<?> updateHooksScheduledFuture;
+    private static final Logger                   log         = LogManager.getLogger(GitlabServices.class);
+    private static final DTOFactory               dtoFactory  = DTOFactory.getInstance();
+    private final        ApplicationSettings      applicationSettings;
+    private final        GitLabApiWrapper         gitLabApiWrapper;
+    private              GitLabApi                gitLabApi;
+    private              boolean                  cleanupOnly = false;
+    private              ScheduledExecutorService testCleanupExecutor;
+    private              ScheduledFuture<?>       testCleanupScheduledFuture;
+    private              ScheduledExecutorService updateHooksExecutor;
+    private              ScheduledFuture<?>       updateHooksScheduledFuture;
 
 
     private URL webhookURL;
 
     @Autowired
-    public GitlabServices(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper, ApplicationArguments applicationArguments ) {
+    public GitlabServices(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper,
+            ApplicationArguments applicationArguments) {
         this.applicationSettings = applicationSettings;
         this.gitLabApiWrapper = gitLabApiWrapper;
 
-        if(applicationArguments.containsOption("cleanupOnly") && (applicationArguments.getOptionValues("cleanupOnly").size()>0)){
+        if (applicationArguments.containsOption("cleanupOnly") &&
+            (!applicationArguments.getOptionValues("cleanupOnly").isEmpty())) {
             cleanupOnly = Boolean.parseBoolean(applicationArguments.getOptionValues("cleanupOnly").get(0));
         }
     }
@@ -106,28 +111,27 @@ public class GitlabServices {
         gitLabApi = gitLabApiWrapper.getGitLabApi();
 
         try {
-            ProjectFilter filter = new ProjectFilter().withMembership(true)
-                    .withMinAccessLevel(AccessLevel.MAINTAINER);
+            ProjectFilter filter = new ProjectFilter().withMembership(true).withMinAccessLevel(AccessLevel.MAINTAINER);
 
-            List<Project> projects =  gitLabApi.getProjectApi().getProjects(filter);
+            List<Project> projects = gitLabApi.getProjectApi().getProjects(filter);
 
-            if(cleanupOnly){
+            if (cleanupOnly) {
                 log.info("start with cleanup process");
-                HooksHelper.deleteWebHooks(projects,webhookURL,gitLabApi);
-            }else {
+                HooksHelper.deleteWebHooks(projects, webhookURL, gitLabApi);
+            } else {
 
                 //start hooks' update thread
-                updateHooksExecutor =
-                        Executors.newSingleThreadScheduledExecutor();
-                updateHooksScheduledFuture = updateHooksExecutor.scheduleAtFixedRate(
-                        new HooksUpdateRunnable(gitLabApiWrapper,webhookURL),0 , HooksUpdateRunnable.INTERVAL, TimeUnit.MINUTES);
+                updateHooksExecutor = Executors.newSingleThreadScheduledExecutor();
+                updateHooksScheduledFuture =
+                        updateHooksExecutor.scheduleAtFixedRate(new HooksUpdateRunnable(gitLabApiWrapper, webhookURL), 0,
+                                HooksUpdateRunnable.INTERVAL, TimeUnit.MINUTES);
 
             }
         } catch (GitLabApiException e) {
             log.warn("Failed to create GitLab web hooks", e);
             throw new RuntimeException(e);
         }
-        if(!cleanupOnly) {
+        if (!cleanupOnly) {
             //start test cleanUp thread
             testCleanupExecutor = Executors.newSingleThreadScheduledExecutor();
             testCleanupScheduledFuture = testCleanupExecutor.scheduleAtFixedRate(
@@ -137,17 +141,18 @@ public class GitlabServices {
     }
 
     private void initWebHookListenerURL() throws MalformedURLException {
-        URL serverBaseUrl = (applicationSettings.getConfig().getServerWebhookRouteUrl() != null && !applicationSettings.getConfig().getServerWebhookRouteUrl().isEmpty())?
-                new URL(applicationSettings.getConfig().getServerWebhookRouteUrl()) :
-                new URL(applicationSettings.getConfig().getServerBaseUrl());
-
-        webhookURL= new URL(serverBaseUrl, "events");
+        if (applicationSettings.getConfig().getServerWebhookRouteUrl() != null &&
+            !applicationSettings.getConfig().getServerWebhookRouteUrl().isEmpty()) {
+            webhookURL = new URL(applicationSettings.getConfig().getServerWebhookRouteUrl());
+        } else {
+            webhookURL = new URL(new URL(applicationSettings.getConfig().getServerBaseUrl()), "events");
+        }
     }
 
     @PreDestroy
     private void stop() {
         try {
-            if(!cleanupOnly) {
+            if (!cleanupOnly) {
                 stopExecutors();
 
                 log.info("Destroying GitLab webhooks ...");
@@ -178,12 +183,15 @@ public class GitlabServices {
     private void validateEventsAPIAvailability() throws MalformedURLException {
         URL serverBaseUrl = new URL(applicationSettings.getConfig().getServerBaseUrl());
         URL webhookListenerUrl = new URL(serverBaseUrl, "events");
-        String warning = String.format("Error while accessing the '%s' endpoint. Note that this endpoint must be accessible by GitLab.", webhookListenerUrl.toString());
+        String warning =
+                String.format("Error while accessing the '%s' endpoint. Note that this endpoint must be accessible by GitLab.",
+                        webhookListenerUrl.toString());
 
-        if(applicationSettings.getConfig().getServerWebhookRouteUrl()!=null){
+        if (applicationSettings.getConfig().getServerWebhookRouteUrl() != null) {
             URL webhookRouteUrl = new URL(new URL(applicationSettings.getConfig().getServerWebhookRouteUrl()), "events");
-            warning = String.format("Error while accessing the '%s' endpoint. Note that you should route '%s' to this endpoint, and this endpoint must be accessible",
-                    webhookListenerUrl.toString(),webhookRouteUrl.toString());
+            warning = String.format(
+                    "Error while accessing the '%s' endpoint. Note that you should route '%s' to this endpoint, and this endpoint must be accessible",
+                    webhookListenerUrl.toString(), webhookRouteUrl.toString());
         }
 
         try {
@@ -193,7 +201,8 @@ public class GitlabServices {
             if (response.getStatusLine().getStatusCode() == 200) {
                 String responseStr = EntityUtils.toString(response.getEntity());
                 if (responseStr.equals(com.microfocus.octane.gitlab.api.EventListener.LISTENING)) {
-                    final String success = String.format("Success while accessing the '%s' endpoint.", webhookListenerUrl.toString());
+                    final String success =
+                            String.format("Success while accessing the '%s' endpoint.", webhookListenerUrl.toString());
                     log.info(success);
                 } else {
                     log.error(warning);
@@ -208,44 +217,44 @@ public class GitlabServices {
         }
     }
 
-    CIJobsList getJobList(boolean includeParameters, Long workspaceId) {
+    CIJobsList getJobList(boolean includeParameters) {
         CIJobsList ciJobsList = dtoFactory.newDTO(CIJobsList.class);
         List<PipelineNode> list = new ArrayList<>();
-        String projectNames ="";
+        StringBuilder projectNames = new StringBuilder();
         try {
             ProjectFilter filter = new ProjectFilter();
             filter.withMembership(true).withMinAccessLevel(AccessLevel.MAINTAINER);
             List<Project> projectsFilters = gitLabApi.getProjectApi().getProjects(filter);
-            log.info("There are only "+ projectsFilters.size() +" projects with access level => MAINTAINER for the integrated user");
+            log.info("There are only " +
+                     projectsFilters.size() +
+                     " projects with access level => MAINTAINER for the integrated user");
 
 
             for (Project project : projectsFilters) {
-                    try {
-                        ParsedPath parseProject = new ParsedPath(project, gitLabApi);
-                        PipelineNode buildConf;
+                try {
+                    ParsedPath parseProject = new ParsedPath(project, gitLabApi);
+                    PipelineNode buildConf;
 
-                        buildConf = dtoFactory.newDTO(PipelineNode.class)
-                                .setJobCiId(parseProject.getJobCiId(true))
-                                .setName(project.getNameWithNamespace())
-                                .setDefaultBranchName(project.getDefaultBranch())
-                                .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
+                    buildConf = dtoFactory.newDTO(PipelineNode.class).setJobCiId(parseProject.getJobCiId(true))
+                            .setName(project.getNameWithNamespace()).setDefaultBranchName(project.getDefaultBranch())
+                            .setMultiBranchType(MultiBranchType.MULTI_BRANCH_PARENT);
 
-                        if(includeParameters){
-                            buildConf.setParameters(getParameters(parseProject));
-                        }
-                        projectNames = projectNames + buildConf.getName()+",";
-                        list.add(buildConf);
-                    } catch (Exception e) {
-                        log.warn("Failed to add some tags to the job list", e);
+                    if (includeParameters) {
+                        buildConf.setParameters(getParameters(parseProject));
                     }
+                    projectNames.append(buildConf.getName()).append(",");
+                    list.add(buildConf);
+                } catch (Exception e) {
+                    log.warn("Failed to add some tags to the job list", e);
                 }
+            }
 
         } catch (Exception e) {
             log.warn("Failed to add some jobs to the job list", e);
         }
 
-        log.info("getJobList results:"+projectNames);
-        ciJobsList.setJobs(list.toArray(new PipelineNode[list.size()]));
+        log.info("getJobList results:" + projectNames);
+        ciJobsList.setJobs(list.toArray(new PipelineNode[0]));
         return ciJobsList;
     }
 
@@ -253,31 +262,9 @@ public class GitlabServices {
         return gitLabApi.getUserApi().getCurrentUser().getIsAdmin() != null && gitLabApi.getUserApi().getCurrentUser().getIsAdmin();
     }*/
 
-    PipelineNode createStructure(String buildId, boolean isMultiBranchParent) {
-
-        ParsedPath project = new ParsedPath(buildId, gitLabApi, isMultiBranchParent? PathType.MULTI_BRUNCH : PathType.PIPELINE);
-        try {
-            Project currentProject = gitLabApi.getProjectApi().getProject(project.getFullPathOfProject());
-            HooksHelper.addWebHookToProject(gitLabApi,webhookURL,project.getFullPathOfProject(),true);
-            return dtoFactory.newDTO(PipelineNode.class)
-                    .setJobCiId(project.getJobCiId(isMultiBranchParent))
-                    .setDefaultBranchName(currentProject.getDefaultBranch())
-                    .setMultiBranchType(isMultiBranchParent ? MultiBranchType.MULTI_BRANCH_PARENT : MultiBranchType.MULTI_BRANCH_CHILD)
-                    .setName(project.getNameWithNameSpaceForDisplayName())
-                    .setParameters(getParameters(project));
-
-        } catch (GitLabApiException e){
-            if(e.getHttpStatus() != HttpStatus.SC_NOT_FOUND) {
-                log.error("unable to update webhook when create a pipeline in Octane for project:"+ project.getDisplayName(),e);
-            }
-        }
-
-        return null;
-    }
-
     public List<CIParameter> getParameters(ParsedPath project) {
         List<CIParameter> parametersList = new ArrayList<>();
-        List<Variable> projectVariables = VariablesHelper.getVariables(project,gitLabApi,applicationSettings.getConfig());
+        List<Variable> projectVariables = VariablesHelper.getVariables(project, gitLabApi, applicationSettings.getConfig());
 
         projectVariables.forEach(var -> {
             CIParameter param = dtoFactory.newDTO(CIParameter.class);
@@ -288,6 +275,26 @@ public class GitlabServices {
         });
 
         return parametersList;
+    }
+
+    PipelineNode createStructure(String buildId, boolean isMultiBranchParent) {
+
+        ParsedPath project = new ParsedPath(buildId, gitLabApi, isMultiBranchParent ? PathType.MULTI_BRUNCH : PathType.PIPELINE);
+        try {
+            Project currentProject = gitLabApi.getProjectApi().getProject(project.getFullPathOfProject());
+            HooksHelper.addWebHookToProject(gitLabApi, webhookURL, project.getFullPathOfProject(), true);
+            return dtoFactory.newDTO(PipelineNode.class).setJobCiId(project.getJobCiId(isMultiBranchParent))
+                    .setDefaultBranchName(currentProject.getDefaultBranch()).setMultiBranchType(
+                            isMultiBranchParent ? MultiBranchType.MULTI_BRANCH_PARENT : MultiBranchType.MULTI_BRANCH_CHILD)
+                    .setName(project.getNameWithNameSpaceForDisplayName()).setParameters(getParameters(project));
+
+        } catch (GitLabApiException e) {
+            if (e.getHttpStatus() != HttpStatus.SC_NOT_FOUND) {
+                log.error("unable to update webhook when create a pipeline in Octane for project:" + project.getDisplayName(), e);
+            }
+        }
+
+        return null;
     }
 
     public boolean isCleanUpOnly() {
