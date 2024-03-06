@@ -53,8 +53,8 @@ server.port=9091
 
 # ALM Octane GitLab Service-oriented properties
 # =========================================
-server.baseUrl=<mandatory: the base URL of this service, should be accessible by GitLab>
-server.webhook.route.url=<optional: URL of the service that can be exposed and is reachable from GitLab>
+server.baseUrl=<mandatory: the base URL of this service (the URL on which the GitLab service actually runs), should be accessible by GitLab>
+server.webhook.route.url=<optional: the webhook URL of the GitLab service that can be exposed and is reachable from GitLab (the URL that GitLab will send events to)>
 ciserver.identity=<optional: CI server identity, by default a hash value generated from the service URL is used>
 octane.location=<mandatory: the URL of the ALM Octane server with the /ui path and the sharedspace parameters. Example: https://myserver:8080/ui?p=1005>
 octane.apiClientID=<mandatory: ALM Octane API client ID with CI/CD integration role over the target workspace(s)>
