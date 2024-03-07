@@ -383,11 +383,11 @@ public class OctaneServices extends CIPluginServices {
             ParsedPath cutProject = null;
 
             Optional<Job> optionalJob = extractGitLabJob(project, buildNumber);
-            if(optionalJob.isEmpty()) {
+            if (optionalJob.isEmpty()) {
                 cutProject = new ParsedPath(ParsedPath.cutLastPartOfPath(project.getPathWithNameSpace()), gitLabApi, PathType.PROJECT);
             }
 
-            while (optionalJob.isEmpty() && !project.getFullPathOfProject().equals(cutProject.getFullPathOfProject())){
+            while (optionalJob.isEmpty() && !project.getFullPathOfProject().equals(cutProject.getFullPathOfProject())) {
                 cutProject = project;
                 project = new ParsedPath(ParsedPath.cutLastPartOfPath(project.getPathWithNameSpace()), gitLabApi, PathType.PROJECT);
                 optionalJob = extractGitLabJob(project, buildNumber);
