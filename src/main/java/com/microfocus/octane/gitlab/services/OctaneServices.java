@@ -380,9 +380,13 @@ public class OctaneServices extends CIPluginServices {
         TestsResult result = dtoFactory.newDTO(TestsResult.class);
         try {
             ParsedPath project = new ParsedPath(ParsedPath.cutLastPartOfPath(jobFullName), gitLabApi, PathType.PROJECT);
-            ParsedPath cutProject = new ParsedPath(ParsedPath.cutLastPartOfPath(project.getPathWithNameSpace()), gitLabApi, PathType.PROJECT);
+            ParsedPath cutProject = null;
 
             Optional<Job> optionalJob = extractGitLabJob(project, buildNumber);
+            if(optionalJob.isEmpty()) {
+                cutProject = new ParsedPath(ParsedPath.cutLastPartOfPath(project.getPathWithNameSpace()), gitLabApi, PathType.PROJECT);
+            }
+
             while (optionalJob.isEmpty() && !project.getFullPathOfProject().equals(cutProject.getFullPathOfProject())){
                 cutProject = project;
                 project = new ParsedPath(ParsedPath.cutLastPartOfPath(project.getPathWithNameSpace()), gitLabApi, PathType.PROJECT);
