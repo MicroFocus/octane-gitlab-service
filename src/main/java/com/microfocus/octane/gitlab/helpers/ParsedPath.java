@@ -52,15 +52,15 @@ public class ParsedPath {
     private String pathWithNameSpace;
     private List<Branch> branches;
     private String currentBranch;
-    private long id;
-    private GitLabApi gitlabApi;
-    private static final Logger log = LogManager.getLogger(ParsedPath.class);
+    private              long      id;
+    private final        GitLabApi gitlabApi;
+    private static final Logger    log = LogManager.getLogger(ParsedPath.class);
     private String nameWithNameSpaceForDisplayName;
 
     public static List<String> getGroupFullPathFromProject(String fullPathOfProject) {
         List<String> groupFullPath = new ArrayList<>();
 
-        while (fullPathOfProject.length()>0){
+        while (!fullPathOfProject.isEmpty()){
             try{
                 int index = fullPathOfProject.lastIndexOf("/");
                 if(index >=0){
@@ -81,7 +81,7 @@ public class ParsedPath {
 
         String branchSuffix = "";
         if(path.contains(BRANCH_WITH_SLASH_SEPARATOR)){
-            branchSuffix = path.substring(path.lastIndexOf(BRANCH_WITH_SLASH_SEPARATOR)+(BRANCH_WITH_SLASH_SEPARATOR.length()-1),path.length() );
+            branchSuffix = path.substring(path.lastIndexOf(BRANCH_WITH_SLASH_SEPARATOR)+(BRANCH_WITH_SLASH_SEPARATOR.length()-1));
             path = path.substring(0,path.lastIndexOf(BRANCH_WITH_SLASH_SEPARATOR));
         }
 
@@ -219,7 +219,7 @@ public class ParsedPath {
         if(currentBranch!= null)
             return currentBranch;
 
-        if(getBranches().size()>0){
+        if(!getBranches().isEmpty()){
             return getDefaultBranch();
         }else{
              throw new ArrayIndexOutOfBoundsException ("there is not branches for this project, the project is empty:"+this.displayName);

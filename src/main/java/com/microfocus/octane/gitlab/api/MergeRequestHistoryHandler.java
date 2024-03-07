@@ -45,6 +45,7 @@ import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectFilter;
 import org.gitlab4j.api.models.Variable;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
@@ -78,7 +79,7 @@ public class MergeRequestHistoryHandler {
 
     @Autowired
     public MergeRequestHistoryHandler(GitLabApiWrapper gitLabApiWrapper, ApplicationSettings applicationSettings,
-                                      TaskExecutor taskExecutor) {
+                                      @Qualifier("taskExecutor") TaskExecutor taskExecutor) {
 
         this.gitLabApi = gitLabApiWrapper.getGitLabApi();
         this.applicationSettings = applicationSettings;

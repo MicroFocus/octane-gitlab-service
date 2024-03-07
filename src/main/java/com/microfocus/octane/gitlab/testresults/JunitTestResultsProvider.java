@@ -164,9 +164,9 @@ public class JunitTestResultsProvider {
 
     private void addTestCase(List<TestRun> result, Testsuite ts, Testcase tc) {
         TestRunResult testResultStatus;
-        if (tc.getSkipped() != null && tc.getSkipped().trim().length() > 0) {
+        if (tc.getSkipped() != null && !tc.getSkipped().trim().isEmpty()) {
             testResultStatus = TestRunResult.SKIPPED;
-        } else if (tc.getFailure().size() > 0 || tc.getError().size() > 0) {
+        } else if (!tc.getFailure().isEmpty() || !tc.getError().isEmpty()) {
             testResultStatus = TestRunResult.FAILED;
         } else {
             testResultStatus = TestRunResult.PASSED;
@@ -179,13 +179,13 @@ public class JunitTestResultsProvider {
                 .setTestName(tc.getName())
                 .setResult(testResultStatus)
                 .setDuration(tc.getTime() != null ? Double.valueOf(tc.getTime()).longValue() * 1000 : 1);
-        if (tc.getError() != null && tc.getError().size() > 0) {
+        if (tc.getError() != null && !tc.getError().isEmpty()) {
             TestRunError error = dtoFactory.newDTO(TestRunError.class);
             error.setErrorMessage(tc.getError().get(0).getMessage());
             error.setErrorType(tc.getError().get(0).getType());
             error.setStackTrace(tc.getError().get(0).getContent());
             tr.setError(error);
-        } else if (tc.getFailure() != null && tc.getFailure().size() > 0) {
+        } else if (tc.getFailure() != null && !tc.getFailure().isEmpty()) {
             TestRunError error = dtoFactory.newDTO(TestRunError.class);
             error.setErrorMessage(tc.getFailure().get(0).getMessage());
             error.setErrorType(tc.getFailure().get(0).getType());

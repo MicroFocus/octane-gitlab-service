@@ -49,8 +49,8 @@ public class HooksUpdateRunnable implements Runnable {
     static public final int INTERVAL = 60;
     GitLabApi gitLabApi;
     Date lastUpdateTime;
-    private URL webhookURL;
-    private long lastUpdatedProjectId = 0;
+    private final URL  webhookURL;
+    private       long lastUpdatedProjectId = 0;
     static final Logger log = LogManager.getLogger(HooksUpdateRunnable.class);
 
     public HooksUpdateRunnable(GitLabApiWrapper gitLabApiWrapper, URL webhookURL) {
@@ -74,8 +74,8 @@ public class HooksUpdateRunnable implements Runnable {
                     .withMinAccessLevel(AccessLevel.MAINTAINER);
             List<Project> projects = gitLabApi.getProjectApi().getProjects(filter);
 
-            if (projects.size() > 0) {
-                projects.stream().forEach(project -> {
+            if (!projects.isEmpty()) {
+                projects.forEach(project -> {
                     try {
                         HooksHelper.addWebHookToProject(gitLabApi, webhookURL, project.getId(), true);
                     } catch (GitLabApiException e) {
