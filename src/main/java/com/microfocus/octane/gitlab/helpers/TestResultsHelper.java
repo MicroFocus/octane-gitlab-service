@@ -66,9 +66,7 @@ public class TestResultsHelper {
                 "Project_"+ projectId + "Build_"+ jobId).toFile();
         targetDirectory.mkdirs();
 
-        File mqmTestResultsFile = new File(targetDirectory, SdkConstants.General.MQM_TESTS_FILE_NAME);
-
-        return mqmTestResultsFile;
+        return new File(targetDirectory, SdkConstants.General.MQM_TESTS_FILE_NAME);
     }
 
     public static boolean isFilePatternExist(String filePattern){

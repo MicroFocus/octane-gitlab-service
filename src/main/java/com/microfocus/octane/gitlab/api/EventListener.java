@@ -55,7 +55,6 @@ import com.microfocus.octane.gitlab.helpers.TestResultsHelper;
 import com.microfocus.octane.gitlab.helpers.VariablesHelper;
 import com.microfocus.octane.gitlab.model.ConfigStructure;
 import com.microfocus.octane.gitlab.model.MergeRequestEventType;
-import com.microfocus.octane.gitlab.services.OctaneServices;
 import com.microfocus.octane.gitlab.testresults.GherkinTestResultsProvider;
 import com.microfocus.octane.gitlab.testresults.JunitTestResultsProvider;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -103,6 +102,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @Path("/events")
@@ -112,14 +112,13 @@ public class EventListener {
     private static final DTOFactory                                 dtoFactory        = DTOFactory.getInstance();
     private final        GitLabApi                                  gitLabApi;
     private final        ApplicationSettings                        applicationSettings;
-    private final        Map<Long, JSONArray>                       pipelineVariables = new HashMap<>();
+    private final        Map<Long, JSONArray>                       pipelineVariables = new ConcurrentHashMap<>();
     private final        List<Long>                                 sentRoots         = new ArrayList<>();
-    private final        Map<Long, List<Pair<CIEvent, JSONObject>>> noRootEvents      = new HashMap<>();
-    private final        Map<Long, String>                          lastJobEvents     = new HashMap<>();
+    private final        Map<Long, List<Pair<CIEvent, JSONObject>>> noRootEvents      = new ConcurrentHashMap<>();
+    private final        Map<Long, String>                          lastJobEvents     = new ConcurrentHashMap<>();
 
     @Autowired
-    public EventListener(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper,
-            OctaneServices octaneServices) {
+    public EventListener(ApplicationSettings applicationSettings, GitLabApiWrapper gitLabApiWrapper) {
         this.applicationSettings = applicationSettings;
         this.gitLabApi = gitLabApiWrapper.getGitLabApi();
     }
@@ -193,7 +192,7 @@ public class EventListener {
                                 .forEach(var -> parametersList.add(VariablesHelper.convertVariableToParameter(var)));
                     }
 
-                    if (parametersList.size() > 0) {
+                    if (!parametersList.isEmpty()) {
                         ciEvent.setParameters(parametersList);
                     }
                 }
@@ -337,7 +336,7 @@ public class EventListener {
                 List<File> coverageResultFiles =
                         TestResultsHelper.extractArtifactsToFiles(artifactsStream, "glob:" + coverageReportFilePattern);
 
-                if (Objects.nonNull(coverageResultFiles) && coverageResultFiles.size() > 0) {
+                if (Objects.nonNull(coverageResultFiles) && !coverageResultFiles.isEmpty()) {
                     coverageResultFiles.forEach(coverageFile -> OctaneSDK.getClients().forEach(client -> {
                         try {
                             client.getCoverageService().pushCoverage(octaneJobId, octaneBuildId, CoverageReportType.JACOCOXML,
@@ -463,10 +462,10 @@ public class EventListener {
             return Math.round(1000 * (Double) duration);
         }
         if (duration instanceof BigDecimal) {
-            return Long.valueOf(Math.round(1000 * ((BigDecimal) duration).intValue()));
+            return (long) Math.round(1000 * ((BigDecimal) duration).intValue());
         }
 
-        return Long.valueOf(Math.round(1000 * (Integer) duration));
+        return (long) Math.round(1000 * (Integer) duration);
 
         // return Math.round(duration instanceof Double ? 1000* (Double) duration : 1000 * (Integer) duration);
 
