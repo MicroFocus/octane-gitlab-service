@@ -269,8 +269,9 @@ However, password encryption is optional. You can enter the password plain value
 
 ### Multi-Branch 
 
-If you create a pipeline with one branch, and then add more branches, ALM Octane will not reflect this change.  
-In this case, delete the original pipeline and create a new one for the multi-branch plan.
+All created pipelines in ALM Octane will be multi-branch pipelines (parent structure of the project which cannot be directly run).
+In order to inject an actual implementation of a pipeline (e.g. the one defined on the main branch), it needs to be executed from the GitLab side (after the multi-branch structure has been created on the Octane side).
+After the execution, the pipeline will be displayed in Octane, as a child of the multi-branch parent.
 
 ### Cannot see the project in the job list of Octane
 
